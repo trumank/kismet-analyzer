@@ -139,7 +139,7 @@ public class Program {
         UAsset to = new UAsset(opts.To, UE4Version.VER_UE4_27);
 
         foreach (var index in opts.Imports) {
-            var newIndex = CopyImportTo((from, FPackageIndex.FromRawIndex(index)), to);
+            var newIndex = Kismet.CopyImportTo((from, FPackageIndex.FromRawIndex(index)), to);
             var i = newIndex.ToImport(to);
             Console.WriteLine($"Copied import {index} => {newIndex}: {i.ClassName}, {i.ClassPackage}, {i.ObjectName}");
         }
@@ -147,32 +147,6 @@ public class Program {
         to.Write(opts.To);
 
         return 0;
-    }
-    public static FPackageIndex? CopyImportTo((UAsset, FPackageIndex?) import, UAsset asset) {
-        if (import.Item2 == null) return null;
-        for (int i = 0; i < asset.Imports.Count; i++) {
-            var existing = FPackageIndex.FromImport(i);
-            if (AreImportsEqual(import, (asset, existing))) return existing;
-        }
-        var imp = import.Item2.ToImport(import.Item1);
-        if (imp.OuterIndex.IsNull()) {
-            return asset.AddImport(new Import(imp.ClassPackage.ToString(), imp.ClassName.ToString(), FPackageIndex.FromRawIndex(0), imp.ObjectName.ToString(), asset));
-        } else {
-            return asset.AddImport(new Import(imp.ClassPackage.ToString(), imp.ClassName.ToString(), CopyImportTo((import.Item1, imp.OuterIndex), asset), imp.ObjectName.ToString(), asset));
-        }
-    }
-    static bool AreImportsEqual((UAsset, FPackageIndex) a, (UAsset, FPackageIndex) b) {
-        if (a.Item2.IsNull() && b.Item2.IsNull()) {
-            return true;
-        } else if (a.Item2.IsNull() || b.Item2.IsNull()) {
-            return false;
-        }
-        var importA = a.Item2.ToImport(a.Item1);
-        var importB = b.Item2.ToImport(b.Item1);
-        return importA.ClassPackage == importB.ClassPackage
-            && importA.ClassName == importB.ClassName
-            && importA.ObjectName == importB.ObjectName
-            && AreImportsEqual((a.Item1, importA.OuterIndex), (b.Item1, importB.OuterIndex));
     }
     static int MergeFunctions(MergeFunctionsOptions opts) {
         UAsset source = new UAsset(opts.SourcePath, UE4Version.VER_UE4_27);

@@ -423,6 +423,32 @@ public class Kismet {
                 }
         }
     }
+    public static FPackageIndex? CopyImportTo((UAsset, FPackageIndex?) import, UAsset asset) {
+        if (import.Item2 == null) return null;
+        for (int i = 0; i < asset.Imports.Count; i++) {
+            var existing = FPackageIndex.FromImport(i);
+            if (AreImportsEqual(import, (asset, existing))) return existing;
+        }
+        var imp = import.Item2.ToImport(import.Item1);
+        if (imp.OuterIndex.IsNull()) {
+            return asset.AddImport(new Import(imp.ClassPackage.ToString(), imp.ClassName.ToString(), FPackageIndex.FromRawIndex(0), imp.ObjectName.ToString(), asset));
+        } else {
+            return asset.AddImport(new Import(imp.ClassPackage.ToString(), imp.ClassName.ToString(), CopyImportTo((import.Item1, imp.OuterIndex), asset), imp.ObjectName.ToString(), asset));
+        }
+    }
+    static bool AreImportsEqual((UAsset, FPackageIndex?) a, (UAsset, FPackageIndex?) b) {
+        if (a.Item2 == null || b.Item2 == null) {
+            return a.Item2 == null && b.Item2 == null;
+        } if (a.Item2.IsNull() || b.Item2.IsNull()) {
+            return a.Item2.IsNull() && b.Item2.IsNull();
+        }
+        var importA = a.Item2.ToImport(a.Item1);
+        var importB = b.Item2.ToImport(b.Item1);
+        return importA.ClassPackage == importB.ClassPackage
+            && importA.ClassName == importB.ClassName
+            && importA.ObjectName == importB.ObjectName
+            && AreImportsEqual((a.Item1, importA.OuterIndex), (b.Item1, importB.OuterIndex));
+    }
     public static FProperty? CopyProperty(FProperty? prop, UAsset src, UAsset dst) {
         switch (prop) {
             case FGenericProperty p:
@@ -443,7 +469,7 @@ public class Kismet {
             case FObjectProperty p:
                 {
                     return new FObjectProperty() {
-                        PropertyClass = Program.CopyImportTo((src, p.PropertyClass), dst),
+                        PropertyClass = CopyImportTo((src, p.PropertyClass), dst),
                         ArrayDim = p.ArrayDim,
                         ElementSize = p.ElementSize,
                         PropertyFlags = p.PropertyFlags,
@@ -459,7 +485,7 @@ public class Kismet {
             case FStructProperty p:
                 {
                     return new FStructProperty() {
-                        Struct = Program.CopyImportTo((src, p.Struct), dst),
+                        Struct = CopyImportTo((src, p.Struct), dst),
                         ArrayDim = p.ArrayDim,
                         ElementSize = p.ElementSize,
                         PropertyFlags = p.PropertyFlags,
@@ -502,7 +528,7 @@ public class Kismet {
         if (p.ResolvedOwner.IsImport()) {
             return new FFieldPath() {
                 Path = p.Path.Select(p => p.Transfer(dst)).ToArray(),
-                ResolvedOwner = Program.CopyImportTo((src, p.ResolvedOwner), dst),
+                ResolvedOwner = CopyImportTo((src, p.ResolvedOwner), dst),
             };
         }
         if (p.Path.Length > 1) throw new NotImplementedException($"FFieldPath.Length > 1: {String.Join(", ", p.Path.Select(p => p.ToString()))}");
@@ -519,7 +545,7 @@ public class Kismet {
     }
     public static KismetPropertyPointer CopyKismetPropertyPointer(KismetPropertyPointer p, UAsset src, UAsset dst, FunctionExport fnSrc, FunctionExport fnDst) {
         return new KismetPropertyPointer() {
-            Old = Program.CopyImportTo((src, p.Old), dst),
+            Old = CopyImportTo((src, p.Old), dst),
             New = CopyFieldPath(p.New, src, dst, fnSrc, fnDst),
         };
     }
@@ -544,7 +570,7 @@ public class Kismet {
             case EX_ObjectConst e:
                 {
                     return new EX_ObjectConst() {
-                        Value = Program.CopyImportTo((src, e.Value), dst),
+                        Value = CopyImportTo((src, e.Value), dst),
                     };
                 }
             case EX_LocalVirtualFunction e:
@@ -588,7 +614,7 @@ public class Kismet {
                             LocalizedNamespace = CopyExpressionTo(e.Value.LocalizedNamespace, src, dst, fnSrc, fnDst),
                             InvariantLiteralString = CopyExpressionTo(e.Value.InvariantLiteralString, src, dst, fnSrc, fnDst),
                             LiteralString = CopyExpressionTo(e.Value.LiteralString, src, dst, fnSrc, fnDst),
-                            StringTableAsset = Program.CopyImportTo((src, e.Value.StringTableAsset), dst), // TODO likely not actually an import
+                            StringTableAsset = CopyImportTo((src, e.Value.StringTableAsset), dst), // TODO likely not actually an import
                             StringTableId = CopyExpressionTo(e.Value.StringTableId, src, dst, fnSrc, fnDst),
                             StringTableKey = CopyExpressionTo(e.Value.StringTableKey, src, dst, fnSrc, fnDst),
                         },
@@ -627,7 +653,7 @@ public class Kismet {
             case EX_FinalFunction e:
                 {
                     return new EX_FinalFunction() {
-                        StackNode = Program.CopyImportTo((src, e.StackNode), dst),
+                        StackNode = CopyImportTo((src, e.StackNode), dst),
                         Parameters = e.Parameters.Select(p => CopyExpressionTo(p, src, dst, fnSrc, fnDst)).ToArray(),
                     };
                 }
@@ -641,7 +667,7 @@ public class Kismet {
             case EX_StructConst e:
                 {
                     return new EX_StructConst() {
-                        Struct = Program.CopyImportTo((src, e.Struct), dst),
+                        Struct = CopyImportTo((src, e.Struct), dst),
                         StructSize = e.StructSize,
                     };
                 }
@@ -656,7 +682,7 @@ public class Kismet {
                 {
                     return new EX_SetArray() {
                         AssigningProperty = CopyExpressionTo(e.AssigningProperty, src, dst, fnSrc, fnDst),
-                        ArrayInnerProp = Program.CopyImportTo((src, e.ArrayInnerProp), dst),
+                        ArrayInnerProp = CopyImportTo((src, e.ArrayInnerProp), dst),
                         Elements = e.Elements.Select(p => CopyExpressionTo(p, src, dst, fnSrc, fnDst)).ToArray(),
                     };
                 }
