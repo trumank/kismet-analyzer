@@ -4,13 +4,16 @@ using CommandLine;
 
 using UAssetAPI;
 using UAssetAPI.UnrealTypes;
+using UAssetAPI.ExportTypes;
+using UAssetAPI.Kismet.Bytecode;
+using UAssetAPI.Kismet.Bytecode.Expressions;
 
 public class Program {
     [Verb("run", HelpText = "Generate call graph of asset")]
     class RunOptions {
-        [Value(0, Required = true, MetaName = "path", HelpText = "Path of .uasset")]
+        [Value(0, Required = true, MetaName = "asset path", HelpText = "Path of .uasset")]
         public string AssetPath { get; set; }
-        [Value(1, Required = true, MetaName = "path", HelpText = "Path of output directory")]
+        [Value(1, Required = true, MetaName = "output path", HelpText = "Path of output directory")]
         public string OutputPath { get; set; }
     }
 
@@ -32,12 +35,36 @@ public class Program {
         public IEnumerable<int> Imports { get; set; }
     }
 
+    [Verb("hierarchy", HelpText = "Generates a graph showing the class hierarchy of assets")]
+    class GenerateClassHierarchyOptions {
+        [Value(0, Required = true, MetaName = "content path", HelpText = "Path of Content directory")]
+        public string ContentPath { get; set; }
+        [Value(1, Required = true, MetaName = "output path", HelpText = "Path of output .dot file")]
+        public string OutputPath { get; set; }
+    }
+
+    [Verb("merge-functions", HelpText = "Merge functions from a source asset into the start of the dest asset")]
+    class MergeFunctionsOptions {
+        [Value(0, Required = true, MetaName = "source", HelpText = "Path of the source asset")]
+        public string SourcePath { get; set; }
+        [Value(1, Required = true, MetaName = "dest", HelpText = "Path of the dest asset")]
+        public string DestPath { get; set; }
+    }
+
     static int Main(string[] args) {
-        return Parser.Default.ParseArguments<RunOptions,RunTreeOptions,CopyImportsOptions>(args)
+        return Parser.Default.ParseArguments<
+            RunOptions,
+            RunTreeOptions,
+            CopyImportsOptions,
+            GenerateClassHierarchyOptions,
+            MergeFunctionsOptions
+                >(args)
             .MapResult(
                 (RunOptions opts) => Summarize(opts),
                 (RunTreeOptions opts) => RunTree(opts),
                 (CopyImportsOptions opts) => CopyImports(opts),
+                (GenerateClassHierarchyOptions opts) => GenerateClassHierarchy(opts),
+                (MergeFunctionsOptions opts) => MergeFunctions(opts),
                 errs => 1);
     }
     static int Summarize(RunOptions opts) {
@@ -69,6 +96,44 @@ public class Program {
         }
         return 0;
     }
+    static int GenerateClassHierarchy(GenerateClassHierarchyOptions opts) {
+        var enumOptions = new EnumerationOptions();
+        enumOptions.IgnoreInaccessible = true;
+        enumOptions.RecurseSubdirectories = true;
+        IEnumerable<string> files = Directory.EnumerateFiles(opts.ContentPath, "*.uasset", enumOptions);
+
+        var graph = new Graph("digraph");
+        graph.Attributes.Add("rankdir", "LR");
+
+        string Sanitize(string path) {
+            return path.Replace("/", "_").Replace(".", "_").Replace("-", "_");
+        }
+
+        foreach (var assetPath in files) {
+            var asset = new UAsset(assetPath, UE4Version.VER_UE4_27);
+            var classExport = asset.GetClassExport();
+            if (classExport != null) {
+                var parent = classExport.SuperStruct.ToImport(asset);
+
+                var assetPackage = Path.Join("/Game", Path.GetRelativePath(opts.ContentPath, Path.GetDirectoryName(assetPath)), Path.GetFileNameWithoutExtension(assetPath));
+                Console.WriteLine($"{assetPackage}.{classExport.ObjectName} : {parent.OuterIndex.ToImport(asset).ObjectName}.{parent.ObjectName}");
+                var fullClassName = $"{assetPackage}.{classExport.ObjectName}";
+                var fullParentName = $"{parent.OuterIndex.ToImport(asset).ObjectName}.{parent.ObjectName}";
+
+                var classNode = new Graph.Node(Sanitize(fullClassName));
+                classNode.Attributes["label"] = classExport.ObjectName.ToString();
+                classNode.Attributes["URL"] = Path.Join("out/Content/", Path.GetRelativePath(opts.ContentPath, Path.GetDirectoryName(assetPath)), Path.ChangeExtension(Path.GetFileName(assetPath), ".svg"));
+                graph.Nodes.Add(classNode);
+
+                var edge = new Graph.Edge(Sanitize(fullClassName), Sanitize(fullParentName));
+                graph.Edges.Add(edge);
+            }
+        }
+        var output = new StreamWriter(opts.OutputPath);
+        graph.Write(output);
+        output.Close();
+        return 0;
+    }
     static int CopyImports(CopyImportsOptions opts) {
         UAsset from = new UAsset(opts.From, UE4Version.VER_UE4_27);
         UAsset to = new UAsset(opts.To, UE4Version.VER_UE4_27);
@@ -83,7 +148,8 @@ public class Program {
 
         return 0;
     }
-    static FPackageIndex CopyImportTo((UAsset, FPackageIndex) import, UAsset asset) {
+    public static FPackageIndex? CopyImportTo((UAsset, FPackageIndex?) import, UAsset asset) {
+        if (import.Item2 == null) return null;
         for (int i = 0; i < asset.Imports.Count; i++) {
             var existing = FPackageIndex.FromImport(i);
             if (AreImportsEqual(import, (asset, existing))) return existing;
@@ -107,5 +173,45 @@ public class Program {
             && importA.ClassName == importB.ClassName
             && importA.ObjectName == importB.ObjectName
             && AreImportsEqual((a.Item1, importA.OuterIndex), (b.Item1, importB.OuterIndex));
+    }
+    static int MergeFunctions(MergeFunctionsOptions opts) {
+        UAsset source = new UAsset(opts.SourcePath, UE4Version.VER_UE4_27);
+        UAsset dest = new UAsset(opts.DestPath, UE4Version.VER_UE4_27);
+        foreach (var export in source.Exports) {
+            if (export is FunctionExport fnSrc) {
+                if (export.ObjectName.ToString().StartsWith("ExecuteUbergraph")) {
+                    Console.Error.WriteLine("Ignoring ubergraph");
+                    continue;
+                }
+                var found = false;
+                foreach (var exportDest in dest.Exports) {
+                    if (exportDest is FunctionExport fnDest) {
+                        if (fnSrc.ObjectName.ToString().TrimStart('_') != fnDest.ObjectName.ToString().TrimStart('_')) continue;
+                        Console.WriteLine($"Found matching function named {export.ObjectName}");
+
+                        var newInst = new List<KismetExpression>();
+                        //for (int i = 0; i < fnSrc.ScriptBytecode.Length; i++) {
+                        var offset = 0;
+                        foreach (var inst in fnSrc.ScriptBytecode) {
+                            if (inst.GetType() == typeof(EX_Return)) break;
+                            offset += Kismet.GetSize(inst);
+                            newInst.Add(Kismet.CopyExpressionTo(inst, source, dest, fnSrc, fnDest));
+                        }
+                        foreach (var inst in fnDest.ScriptBytecode) {
+                            Kismet.ShiftAddressses(inst, offset);
+                            newInst.Add(inst);
+                        }
+                        fnDest.ScriptBytecode = newInst.ToArray();
+
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) Console.Error.WriteLine($"Could not find matching function for {fnSrc.ObjectName} in dest asset");
+                break;
+            }
+        }
+        dest.Write(opts.DestPath);
+        return 0;
     }
 }
