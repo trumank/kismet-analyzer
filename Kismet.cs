@@ -604,6 +604,12 @@ public class Kismet {
                         Value = e.Value,
                     };
                 }
+            case EX_NameConst e:
+                {
+                    return new EX_NameConst() {
+                        Value = e.Value.Transfer(dst),
+                    };
+                }
             case EX_TextConst e:
                 {
                     return new EX_TextConst() {

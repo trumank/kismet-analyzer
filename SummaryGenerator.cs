@@ -241,7 +241,29 @@ public class SummaryGenerator {
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
+            case EX_DefaultVariable e:
+                {
+                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.Variable.New.Path));
+                    index += 8;
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
+            case EX_InstanceVariable e:
+                {
+                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.Variable.New.Path));
+                    index += 8;
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
             case EX_ObjToInterfaceCast e:
+                {
+                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.ClassPtr));
+                    index += 8;
+                    lines.Add(Stringify(e.Target, ref index, referencedAddresses));
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
+            case EX_InterfaceToObjCast e:
                 {
                     lines = new Lines("EX_" + e.Inst + " " + ToString(e.ClassPtr));
                     index += 8;
@@ -538,13 +560,6 @@ public class SummaryGenerator {
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
-            case EX_InstanceVariable e:
-                {
-                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.Variable.New.Path));
-                    index += 8;
-                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
-                    break;
-                }
             case EX_AddMulticastDelegate e:
                 {
                     lines = new Lines("EX_" + e.Inst);
@@ -623,6 +638,46 @@ public class SummaryGenerator {
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
+            case EX_SetSet e:
+                {
+                    lines = new Lines("EX_" + e.Inst);
+                    lines.Add(Stringify(e.SetProperty, ref index, referencedAddresses));
+                    index += 4;
+                    foreach (var arg in e.Elements) {
+                        lines.Add(Stringify(arg, ref index, referencedAddresses));
+                    }
+                    index++;
+                    break;
+                }
+            case EX_SetMap e:
+                {
+                    lines = new Lines("EX_" + e.Inst);
+                    lines.Add(Stringify(e.MapProperty, ref index, referencedAddresses));
+                    index += 4;
+                    var ei = -1;
+                    IEnumerable<(KismetExpression, KismetExpression)> Pairs(IEnumerable<KismetExpression> input) {
+                        var e = input.GetEnumerator();
+                        try {
+                            while (e.MoveNext()) {
+                                var a = e.Current;
+                                if (e.MoveNext()) {
+                                    yield return (a, e.Current);
+                                }
+                            }
+                        } finally {
+                            (e as IDisposable)?.Dispose();
+                        }
+                    }
+                    foreach (var pair in Pairs(e.Elements)) {
+                        ei++;
+                        var entry = new Lines($"entry {ei}:");
+                        lines.Add(Stringify(pair.Item1, ref index, referencedAddresses));
+                        lines.Add(Stringify(pair.Item2, ref index, referencedAddresses));
+                    }
+                    index++;
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
             case EX_SoftObjectConst e:
                 {
                     lines = new Lines("EX_" + e.Inst + " " + e.Value);
@@ -644,6 +699,20 @@ public class SummaryGenerator {
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
+            case EX_Int64Const e:
+                {
+                    lines = new Lines("EX_" + e.Inst + " " + e.Value);
+                    index += 8;
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
+            case EX_UInt64Const e:
+                {
+                    lines = new Lines("EX_" + e.Inst + " " + e.Value);
+                    index += 8;
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
             case EX_FloatConst e:
                 {
                     lines = new Lines("EX_" + e.Inst + " " + e.Value);
@@ -662,6 +731,26 @@ public class SummaryGenerator {
                 {
                     lines = new Lines("EX_" + e.Inst + " " + e.Value);
                     index += 1 + (uint) e.Value.Length;
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
+            case EX_UnicodeStringConst e:
+                {
+                    lines = new Lines("EX_" + e.Inst + " " + e.Value);
+                    index += 1 + (uint) (e.Value.Length + 1) * 2;
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
+            case EX_ArrayConst e:
+                {
+                    lines = new Lines("EX_" + e.Inst + " " + e.Value);
+                    index += 8;
+                    lines.Add(ToString(e.InnerProperty.New.Path));
+                    index += 4;
+                    foreach (var arg in e.Elements) {
+                        lines.Add(Stringify(arg, ref index, referencedAddresses));
+                    }
+                    index++;
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
@@ -713,6 +802,7 @@ public class SummaryGenerator {
                 }
             default:
                 {
+                    throw new NotImplementedException($"DBG missing expression {exp}");
                     lines = new Lines("DBG missing expression " + exp); // TODO better error handling
                     break;
                 }
