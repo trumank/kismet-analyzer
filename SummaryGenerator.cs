@@ -174,7 +174,9 @@ public class SummaryGenerator {
     public static string SanitizeLabel(string str) {
         return str
             .Replace("{", "\\{")
-            .Replace("}", "\\}");
+            .Replace("}", "\\}")
+            .Replace(">", "&gt;")
+            .Replace("<", "&lt;");
     }
 
     public static string LinesToLabel(Lines lines) {
@@ -234,6 +236,14 @@ public class SummaryGenerator {
                 {
                     lines = new Lines("EX_" + e.Inst + " " + ToString(e.Variable.New.Path));
                     index += 8;
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
+            case EX_LocalOutVariable e:
+                {
+                    lines = new Lines("EX_" + e.Inst);
+                    index += 8;
+                    lines.Add(ToString(e.Variable.New.Path));
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
@@ -481,7 +491,7 @@ public class SummaryGenerator {
                     lines = new Lines("EX_" + e.Inst);
                     lines.Add(Stringify(e.ObjectExpression, ref index, referencedAddresses));
                     index += 4;
-                    lines.Add("SkipOffsetForNull = " + e.Offset);
+                    //lines.Add("SkipOffsetForNull = " + e.Offset);
                     index += 8;
                     lines.Add(Stringify(e.ContextExpression, ref index, referencedAddresses));
                     lines.Add("RValue = " + ToString(e.RValuePointer.New.Path));
@@ -765,14 +775,6 @@ public class SummaryGenerator {
                     lines.Add(Stringify(e.ReturnExpression, ref index, referencedAddresses));
                     break;
                 }
-            case EX_LocalOutVariable e:
-                {
-                    lines = new Lines("EX_" + e.Inst);
-                    index += 8;
-                    lines.Add(ToString(e.Variable.New.Path));
-                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
-                    break;
-                }
             case EX_InterfaceContext e:
                 {
                     lines = new Lines("EX_" + e.Inst);
@@ -826,12 +828,27 @@ public class SummaryGenerator {
     }
 
     string ToString(FPackageIndex index) {
+        string getChain(FPackageIndex child) {
+            if (child.IsNull()) {
+                return "";
+            }
+            if (child.IsImport()) {
+                var a = child.ToImport(Asset);
+                return $"{getChain(a.OuterIndex)}{a.ObjectName}->";
+            }
+            if (child.IsExport()) {
+                var a = child.ToExport(Asset);
+                return $"{getChain(a.OuterIndex)}{a.ObjectName}->";
+            }
+            throw new NotImplementedException("Unreachable");
+
+        }
         if (index.IsNull()) {
             return "null";
         } else if (index.IsExport()) {
-            return "export " + index.ToExport(Asset).ObjectName.ToString();
+            return $"export {getChain(index.ToExport(Asset).OuterIndex)}{index.ToExport(Asset).ObjectName}";
         } else if (index.IsImport()) {
-            return "import " + index.ToImport(Asset).ObjectName.ToString();
+            return $"import {getChain(index.ToImport(Asset).OuterIndex)}{index.ToImport(Asset).ObjectName}";
         }
         throw new Exception("Unreachable");
     }
