@@ -96,73 +96,69 @@ public class SummaryGenerator {
             Output.WriteLine("No ClassExport");
         }
         foreach (var export in Asset.Exports) {
-            switch (export) {
-                case FunctionExport e:
-                    {
-                        Output.WriteLine("FunctionExport " + e.ObjectName);
+            if (export is FunctionExport e) {
+                Output.WriteLine("FunctionExport " + e.ObjectName);
 
-                        string functionName = e.ObjectName.ToString();
+                string functionName = e.ObjectName.ToString();
 
-                        var functionLines = new Lines("Function " + functionName);
-                        foreach (var prop in e.LoadedProperties) {
-                            functionLines.Add(new Lines(prop.SerializedType.ToString() + " " + prop.Name.ToString()));
-                        }
+                var functionLines = new Lines("Function " + functionName);
+                foreach (var prop in e.LoadedProperties) {
+                    functionLines.Add(new Lines(prop.SerializedType.ToString() + " " + prop.Name.ToString()));
+                }
 
-                        var functionNode = new Graph.Node(Sanitize(functionName));
-                        functionNode.Attributes["label"] = LinesToLabel(functionLines);
-                        functionNode.Attributes["shape"] = "record";
-                        functionNode.Attributes["style"] = "filled";
-                        functionNode.Attributes["fillcolor"] = "#ff5555";
-                        functionNode.Attributes["fontname"] = "monospace";
-                        Graph.Nodes.Add(functionNode);
+                var functionNode = new Graph.Node(Sanitize(functionName));
+                functionNode.Attributes["label"] = LinesToLabel(functionLines);
+                functionNode.Attributes["shape"] = "record";
+                functionNode.Attributes["style"] = "filled";
+                functionNode.Attributes["fillcolor"] = "#ff5555";
+                functionNode.Attributes["fontname"] = "monospace";
+                Graph.Nodes.Add(functionNode);
 
-                        var functionEdge = new Graph.Edge(
-                                Sanitize(functionName) + ":s",
-                                Sanitize(functionName) + "_0" + ":n"
-                            );
-                        Graph.Edges.Add(functionEdge);
+                var functionEdge = new Graph.Edge(
+                        Sanitize(functionName) + ":s",
+                        Sanitize(functionName) + "_0" + ":n"
+                    );
+                Graph.Edges.Add(functionEdge);
 
-                        uint index = 0;
-                        foreach (var exp in e.ScriptBytecode) {
-                            var intr = Stringify(exp, ref index);
-                            foreach (var (nest, line) in intr.Content.GetLines()) {
-                                var prefix = nest == 0 ? intr.Address.ToString() + ": " : "";
-                                Output.WriteLine(prefix.PadRight((nest + 2) * 4) + line);
-                            }
-
-                            var node = new Graph.Node(Sanitize(e.ObjectName.ToString()) + "_" + intr.Address.ToString());
-                            node.Attributes["label"] = LinesToLabel(intr.Content);
-                            node.Attributes["shape"] = "record";
-                            node.Attributes["style"] = "filled";
-                            node.Attributes["fillcolor"] = "#eeeeee";
-                            node.Attributes["fontname"] = "monospace";
-
-                            foreach (var reference in intr.ReferencedAddresses) {
-                                var edge = new Graph.Edge(
-                                        Sanitize(e.ObjectName.ToString()) + "_" + intr.Address.ToString(),
-                                        Sanitize(reference.FunctionName ?? e.ObjectName.ToString()) + "_" + reference.Address.ToString()
-                                    );
-                                switch (reference.Type) {
-                                    case ReferenceType.Normal:
-                                        {
-                                            break;
-                                        }
-                                    case ReferenceType.Jump:
-                                    case ReferenceType.Push:
-                                    case ReferenceType.Skip:
-                                    case ReferenceType.Function:
-                                        {
-                                            edge.Attributes["color"] = "red";
-                                            edge.Attributes["arrowhead"] = "onormal";
-                                            break;
-                                        }
-                                }
-                                Graph.Edges.Add(edge);
-                            }
-                            Graph.Nodes.Add(node);
-                        }
-                        break;
+                uint index = 0;
+                foreach (var exp in e.ScriptBytecode) {
+                    var intr = Stringify(exp, ref index);
+                    foreach (var (nest, line) in intr.Content.GetLines()) {
+                        var prefix = nest == 0 ? intr.Address.ToString() + ": " : "";
+                        Output.WriteLine(prefix.PadRight((nest + 2) * 4) + line);
                     }
+
+                    var node = new Graph.Node(Sanitize(e.ObjectName.ToString()) + "_" + intr.Address.ToString());
+                    node.Attributes["label"] = LinesToLabel(intr.Content);
+                    node.Attributes["shape"] = "record";
+                    node.Attributes["style"] = "filled";
+                    node.Attributes["fillcolor"] = "#eeeeee";
+                    node.Attributes["fontname"] = "monospace";
+
+                    foreach (var reference in intr.ReferencedAddresses) {
+                        var edge = new Graph.Edge(
+                                Sanitize(e.ObjectName.ToString()) + "_" + intr.Address.ToString(),
+                                Sanitize(reference.FunctionName ?? e.ObjectName.ToString()) + "_" + reference.Address.ToString()
+                            );
+                        switch (reference.Type) {
+                            case ReferenceType.Normal:
+                                {
+                                    break;
+                                }
+                            case ReferenceType.Jump:
+                            case ReferenceType.Push:
+                            case ReferenceType.Skip:
+                            case ReferenceType.Function:
+                                {
+                                    edge.Attributes["color"] = "red";
+                                    edge.Attributes["arrowhead"] = "onormal";
+                                    break;
+                                }
+                        }
+                        Graph.Edges.Add(edge);
+                    }
+                    Graph.Nodes.Add(node);
+                }
             }
         }
         Graph.Write(DotOutput);
