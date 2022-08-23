@@ -51,13 +51,22 @@ public class Program {
         public string DestPath { get; set; }
     }
 
+    [Verb("generate", HelpText = "Generate blueprint asset")]
+    class GenerateOptions {
+        [Value(0, Required = true, MetaName = "source", HelpText = "Path of the source asset")]
+        public string SourcePath { get; set; }
+        //[Value(1, Required = true, MetaName = "dest", HelpText = "Path of the dest asset")]
+        //public string DestPath { get; set; }
+    }
+
     static int Main(string[] args) {
         return Parser.Default.ParseArguments<
             RunOptions,
             RunTreeOptions,
             CopyImportsOptions,
             GenerateClassHierarchyOptions,
-            MergeFunctionsOptions
+            MergeFunctionsOptions,
+            GenerateOptions
                 >(args)
             .MapResult(
                 (RunOptions opts) => Summarize(opts),
@@ -65,6 +74,7 @@ public class Program {
                 (CopyImportsOptions opts) => CopyImports(opts),
                 (GenerateClassHierarchyOptions opts) => GenerateClassHierarchy(opts),
                 (MergeFunctionsOptions opts) => MergeFunctions(opts),
+                (GenerateOptions opts) => Generate(opts),
                 errs => 1);
     }
     static int Summarize(RunOptions opts) {
@@ -186,6 +196,12 @@ public class Program {
             }
         }
         dest.Write(opts.DestPath);
+        return 0;
+    }
+    static int Generate(GenerateOptions opts) {
+        UAsset source = new UAsset(opts.SourcePath, UE4Version.VER_UE4_27);
+        var generator = new BlueprintGenerator(source);
+        generator.Generate();
         return 0;
     }
 }
