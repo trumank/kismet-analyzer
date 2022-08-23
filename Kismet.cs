@@ -18,6 +18,7 @@ public class Kismet {
                 }
             case EX_ComputedJump e:
                 {
+                    index += GetSize(e.CodeOffsetExpression);
                     break;
                 }
             case EX_Jump e:
