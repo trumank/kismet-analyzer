@@ -197,7 +197,6 @@ public class SummaryGenerator {
     }
 
     Lines Stringify(KismetExpression exp, ref uint index, List<Reference> referencedAddresses, bool top = false) {
-        var statementIndex = index;
         index++;
         Lines lines;
         switch (exp) {
