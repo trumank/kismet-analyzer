@@ -515,6 +515,27 @@ public class Kismet {
                         Flags = p.Flags,
                     };
                 }
+            case FBoolProperty p:
+                {
+                    return new FBoolProperty() {
+                        FieldSize = p.FieldSize,
+                        ByteOffset = p.ByteOffset,
+                        ByteMask = p.ByteMask,
+                        FieldMask = p.FieldMask,
+                        NativeBool = p.NativeBool,
+                        Value = p.Value,
+                        ArrayDim = p.ArrayDim,
+                        ElementSize = p.ElementSize,
+                        PropertyFlags = p.PropertyFlags,
+                        RepIndex = p.RepIndex,
+                        RepNotifyFunc = p.RepNotifyFunc.Transfer(dst),
+                        BlueprintReplicationCondition = p.BlueprintReplicationCondition,
+                        RawValue = p.RawValue, // TODO is this ever not null?
+                        SerializedType = p.SerializedType.Transfer(dst),
+                        Name = p.Name.Transfer(dst),
+                        Flags = p.Flags,
+                    };
+                }
         }
         throw new NotImplementedException($"FProperty {prop} not implemented");
     }
@@ -536,7 +557,13 @@ public class Kismet {
         if (p.ResolvedOwner.ToExport(src) == fnSrc) {
             var prop = fnSrc.LoadedProperties.First(l => l.Name.ToString() == p.Path[0].ToString());
             if (prop == null) throw new NotImplementedException("Property missing");
-            fnDst.LoadedProperties = fnDst.LoadedProperties.Append(CopyProperty(prop, src, dst)).ToArray();
+
+            var existing = fnDst.LoadedProperties.First(l => l.Name.ToString() == p.Path[0].ToString());
+            if (existing == null) { // prop doesn't already exist so copy it over
+                // TODO check type of prop == existing, only checking by name currently
+                fnDst.LoadedProperties = fnDst.LoadedProperties.Append(CopyProperty(prop, src, dst)).ToArray();
+            }
+
             return new FFieldPath() {
                 Path = p.Path.Select(p => p.Transfer(dst)).ToArray(),
                 ResolvedOwner = FPackageIndex.FromExport(dst.Exports.IndexOf(fnDst)), // TODO avoid IndexOf
@@ -629,7 +656,7 @@ public class Kismet {
                 }
             case EX_True e:
                 {
-                    return new EX_False();
+                    return new EX_True();
                 }
             case EX_False e:
                 {
@@ -642,6 +669,10 @@ public class Kismet {
             case EX_NoObject e:
                 {
                     return new EX_NoObject();
+                }
+            case EX_Nothing e:
+                {
+                    return new EX_Nothing();
                 }
             case EX_Let e:
                 {
@@ -657,6 +688,12 @@ public class Kismet {
                         Variable = CopyKismetPropertyPointer(e.Variable, src, dst, fnSrc, fnDst),
                     };
                 }
+            case EX_LocalOutVariable e:
+                {
+                    return new EX_LocalOutVariable() {
+                        Variable = CopyKismetPropertyPointer(e.Variable, src, dst, fnSrc, fnDst),
+                    };
+                }
             case EX_FinalFunction e:
                 {
                     return new EX_FinalFunction() {
@@ -664,9 +701,22 @@ public class Kismet {
                         Parameters = e.Parameters.Select(p => CopyExpressionTo(p, src, dst, fnSrc, fnDst)).ToArray(),
                     };
                 }
+            case EX_Return e:
+                {
+                    return new EX_Return() {
+                        ReturnExpression = CopyExpressionTo(e.ReturnExpression, src, dst, fnSrc, fnDst),
+                    };
+                }
             case EX_LetObj e:
                 {
                     return new EX_LetObj() {
+                        VariableExpression = CopyExpressionTo(e.VariableExpression, src, dst, fnSrc, fnDst),
+                        AssignmentExpression = CopyExpressionTo(e.AssignmentExpression, src, dst, fnSrc, fnDst),
+                    };
+                }
+            case EX_LetBool e:
+                {
+                    return new EX_LetBool() {
                         VariableExpression = CopyExpressionTo(e.VariableExpression, src, dst, fnSrc, fnDst),
                         AssignmentExpression = CopyExpressionTo(e.AssignmentExpression, src, dst, fnSrc, fnDst),
                     };

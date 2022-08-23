@@ -176,10 +176,22 @@ public class Program {
                         var newInst = new List<KismetExpression>();
                         //for (int i = 0; i < fnSrc.ScriptBytecode.Length; i++) {
                         var offset = 0;
+                        var keepReturn = false;
                         foreach (var inst in fnSrc.ScriptBytecode) {
-                            if (inst.GetType() == typeof(EX_Return)) break;
-                            offset += Kismet.GetSize(inst);
-                            newInst.Add(Kismet.CopyExpressionTo(inst, source, dest, fnSrc, fnDest));
+                            if (inst is EX_Context c) {
+                                if (c.ContextExpression is EX_LocalVirtualFunction i) {
+                                    if (i.VirtualFunctionName.Value.ToString() == "RETURN") {
+                                        keepReturn = true;
+                                        continue; // TODO handle offset addresses in source function because now we're skipping expressions
+                                    }
+                                }
+                            }
+                            var isReturn = inst.GetType() == typeof(EX_Return);
+                            if (isReturn ? keepReturn : true) {
+                                offset += Kismet.GetSize(inst);
+                                newInst.Add(Kismet.CopyExpressionTo(inst, source, dest, fnSrc, fnDest));
+                            }
+                            if (isReturn) break;
                         }
                         foreach (var inst in fnDest.ScriptBytecode) {
                             Kismet.ShiftAddressses(inst, offset);
