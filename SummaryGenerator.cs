@@ -6,6 +6,8 @@ using UAssetAPI.ExportTypes;
 using UAssetAPI.Kismet.Bytecode;
 using UAssetAPI.Kismet.Bytecode.Expressions;
 
+using Dot;
+
 public class SummaryGenerator {
     public class Lines {
         public string Label { get; }
@@ -65,6 +67,8 @@ public class SummaryGenerator {
     public enum ReferenceType {
         Normal,
         Jump,
+        JumpTrue,
+        JumpFalse,
         Push,
         Skip,
         Function,
@@ -81,6 +85,9 @@ public class SummaryGenerator {
         DotOutput = dotOutput;
 
         Graph = new Graph("digraph");
+        Graph.GraphAttributes["fontname"] = "monospace";
+        Graph.NodeAttributes["fontname"] = "monospace";
+        Graph.EdgeAttributes["fontname"] = "monospace";
     }
 
     public void Summarize() {
@@ -95,6 +102,11 @@ public class SummaryGenerator {
         } else {
             Output.WriteLine("No ClassExport");
         }
+
+        var minRank = new Subgraph();
+        minRank.Attributes["rank"] = "min";
+        Graph.Subgraphs.Add(minRank);
+
         foreach (var export in Asset.Exports) {
             if (export is FunctionExport e) {
                 Output.WriteLine("FunctionExport " + e.ObjectName);
@@ -106,18 +118,15 @@ public class SummaryGenerator {
                     functionLines.Add(new Lines(prop.SerializedType.ToString() + " " + prop.Name.ToString()));
                 }
 
-                var functionNode = new Graph.Node(Sanitize(functionName));
+                var functionNode = new Node(Sanitize(functionName));
                 functionNode.Attributes["label"] = LinesToLabel(functionLines);
                 functionNode.Attributes["shape"] = "record";
                 functionNode.Attributes["style"] = "filled";
                 functionNode.Attributes["fillcolor"] = "#ff5555";
-                functionNode.Attributes["fontname"] = "monospace";
                 Graph.Nodes.Add(functionNode);
+                minRank.Nodes.Add(new Node(Sanitize(functionName)));
 
-                var functionEdge = new Graph.Edge(
-                        Sanitize(functionName) + ":s",
-                        Sanitize(functionName) + "_0" + ":n"
-                    );
+                var functionEdge = new Edge(Sanitize(functionName), Sanitize(functionName) + "_0");
                 Graph.Edges.Add(functionEdge);
 
                 uint index = 0;
@@ -128,15 +137,14 @@ public class SummaryGenerator {
                         Output.WriteLine(prefix.PadRight((nest + 2) * 4) + line);
                     }
 
-                    var node = new Graph.Node(Sanitize(e.ObjectName.ToString()) + "_" + intr.Address.ToString());
+                    var node = new Node(Sanitize(e.ObjectName.ToString()) + "_" + intr.Address.ToString());
                     node.Attributes["label"] = LinesToLabel(intr.Content);
                     node.Attributes["shape"] = "record";
                     node.Attributes["style"] = "filled";
                     node.Attributes["fillcolor"] = "#eeeeee";
-                    node.Attributes["fontname"] = "monospace";
 
                     foreach (var reference in intr.ReferencedAddresses) {
-                        var edge = new Graph.Edge(
+                        var edge = new Edge(
                                 Sanitize(e.ObjectName.ToString()) + "_" + intr.Address.ToString(),
                                 Sanitize(reference.FunctionName ?? e.ObjectName.ToString()) + "_" + reference.Address.ToString()
                             );
@@ -145,13 +153,34 @@ public class SummaryGenerator {
                                 {
                                     break;
                                 }
+                            case ReferenceType.JumpFalse:
+                                {
+                                    edge.Attributes["label"] = "IF NOT";
+                                    edge.Attributes["color"] = "red";
+                                    edge.Attributes["arrowhead"] = "onormal";
+                                    edge.A += ":e";
+                                    break;
+                                }
+                            case ReferenceType.JumpTrue:
+                                {
+                                    edge.Attributes["label"] = "IF";
+                                    break;
+                                }
                             case ReferenceType.Jump:
                             case ReferenceType.Push:
+                                {
+                                    edge.Attributes["label"] = "PUSH STACK";
+                                    edge.Attributes["color"] = "red";
+                                    edge.Attributes["arrowhead"] = "onormal";
+                                    edge.A += ":e";
+                                    break;
+                                }
                             case ReferenceType.Skip:
                             case ReferenceType.Function:
                                 {
                                     edge.Attributes["color"] = "red";
                                     edge.Attributes["arrowhead"] = "onormal";
+                                    edge.A += ":e";
                                     break;
                                 }
                         }
@@ -225,10 +254,10 @@ public class SummaryGenerator {
             case EX_JumpIfNot e:
                 {
                     lines = new Lines("EX_" + e.Inst + " " + e.CodeOffset);
-                    referencedAddresses.Add(new Reference(e.CodeOffset, ReferenceType.Jump));
+                    referencedAddresses.Add(new Reference(e.CodeOffset, ReferenceType.JumpFalse));
                     index += 4;
                     lines.Add(Stringify(e.BooleanExpression, ref index, referencedAddresses));
-                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.JumpTrue));
                     break;
                 }
             case EX_LocalVariable e:

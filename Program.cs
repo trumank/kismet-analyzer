@@ -8,6 +8,8 @@ using UAssetAPI.ExportTypes;
 using UAssetAPI.Kismet.Bytecode;
 using UAssetAPI.Kismet.Bytecode.Expressions;
 
+using Dot;
+
 public class Program {
     [Verb("run", HelpText = "Generate call graph of asset")]
     class RunOptions {
@@ -113,7 +115,7 @@ public class Program {
         IEnumerable<string> files = Directory.EnumerateFiles(opts.ContentPath, "*.uasset", enumOptions);
 
         var graph = new Graph("digraph");
-        graph.Attributes.Add("rankdir", "LR");
+        graph.GraphAttributes["rankdir"] = "LR";
 
         string Sanitize(string path) {
             return path.Replace("/", "_").Replace(".", "_").Replace("-", "_");
@@ -130,12 +132,12 @@ public class Program {
                 var fullClassName = $"{assetPackage}.{classExport.ObjectName}";
                 var fullParentName = $"{parent.OuterIndex.ToImport(asset).ObjectName}.{parent.ObjectName}";
 
-                var classNode = new Graph.Node(Sanitize(fullClassName));
+                var classNode = new Node(Sanitize(fullClassName));
                 classNode.Attributes["label"] = classExport.ObjectName.ToString();
                 classNode.Attributes["URL"] = Path.Join("out/Content/", Path.GetRelativePath(opts.ContentPath, Path.GetDirectoryName(assetPath)), Path.ChangeExtension(Path.GetFileName(assetPath), ".svg"));
                 graph.Nodes.Add(classNode);
 
-                var edge = new Graph.Edge(Sanitize(fullClassName), Sanitize(fullParentName));
+                var edge = new Edge(Sanitize(fullClassName), Sanitize(fullParentName));
                 graph.Edges.Add(edge);
             }
         }
