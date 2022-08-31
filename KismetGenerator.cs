@@ -266,11 +266,14 @@ public class BlueprintGenerator {
         }
     }
 
+    UEContext Context;
+
     UAsset Asset;
     TextWriter Output;
     Dictionary<Address, KismetExpression> ExpressionMap;
 
-    public BlueprintGenerator(UAsset asset) {
+    public BlueprintGenerator(UEContext context, UAsset asset) {
+        Context = context;
         Asset = asset;
         Output = Console.Out;
         ExpressionMap = new Dictionary<Address, KismetExpression>();
