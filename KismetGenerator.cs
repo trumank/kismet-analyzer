@@ -249,8 +249,8 @@ public class BlueprintGenerator {
 
     public class Address {
         public FPackageIndex PackageIndex { get; }
-        public int Offset { get; }
-        public Address(FPackageIndex packageIndex, int offset) {
+        public uint Offset { get; }
+        public Address(FPackageIndex packageIndex, uint offset) {
             PackageIndex = packageIndex;
             Offset = offset;
         }

@@ -8,8 +8,8 @@ using UAssetAPI.Kismet.Bytecode;
 using UAssetAPI.Kismet.Bytecode.Expressions;
 
 public class Kismet {
-    public static int GetSize(KismetExpression exp) {
-        int index = 1;
+    public static uint GetSize(KismetExpression exp) {
+        uint index = 1;
         switch (exp) {
             case EX_PushExecutionFlow e:
                 {
@@ -332,6 +332,14 @@ public class Kismet {
                     index += 4;
                     break;
                 }
+            case EX_ArrayConst e:
+                {
+                    index += 13;
+                    foreach (var arg in e.Elements) {
+                        index += GetSize(arg);
+                    }
+                    break;
+                }
             case EX_Return e:
                 {
                     index += GetSize(e.ReturnExpression);
@@ -369,15 +377,15 @@ public class Kismet {
         return index;
     }
 
-    static int GetStringSize(KismetExpression exp) {
+    static uint GetStringSize(KismetExpression exp) {
         switch (exp) {
             case EX_StringConst e:
                 {
-                    return e.Value.Length + 1;
+                    return (uint) (e.Value.Length + 1);
                 }
             case EX_UnicodeStringConst e:
                 {
-                    return 2 * (e.Value.Length + 1);
+                    return (uint) (2 * (e.Value.Length + 1));
                 }
             default:
                 throw new Exception("ReadString called on non-string");

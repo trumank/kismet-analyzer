@@ -190,7 +190,7 @@ public class Program {
                             }
                             var isReturn = inst.GetType() == typeof(EX_Return);
                             if (isReturn ? keepReturn : true) {
-                                offset += Kismet.GetSize(inst);
+                                offset += (int) Kismet.GetSize(inst);
                                 newInst.Add(Kismet.CopyExpressionTo(inst, source, dest, fnSrc, fnDest));
                             }
                             if (isReturn) break;
