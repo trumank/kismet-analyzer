@@ -153,7 +153,7 @@ public class SummaryGenerator {
                 Graph.Nodes.Add(functionNode);
                 minRank.Nodes.Add(new Node(Sanitize(functionName)));
 
-                var functionEdge = new Edge(Sanitize(functionName), Sanitize(functionName) + "_0");
+                var functionEdge = new Edge(Sanitize(functionName), Sanitize(functionName) + "__0");
                 Graph.Edges.Add(functionEdge);
 
                 uint index = 0;
@@ -164,7 +164,7 @@ public class SummaryGenerator {
                         Output.WriteLine(prefix.PadRight((nest + 2) * 4) + line);
                     }
 
-                    var node = new Node(Sanitize(e.ObjectName.ToString()) + "_" + intr.Address.ToString());
+                    var node = new Node(Sanitize(e.ObjectName.ToString()) + "__" + intr.Address.ToString());
                     node.Attributes["label"] = LinesToLabel(intr.Content);
                     node.Attributes["shape"] = "record";
                     node.Attributes["style"] = "filled";
@@ -172,8 +172,8 @@ public class SummaryGenerator {
 
                     foreach (var reference in intr.ReferencedAddresses) {
                         var edge = new Edge(
-                                Sanitize(e.ObjectName.ToString()) + "_" + intr.Address.ToString(),
-                                Sanitize(reference.FunctionName ?? e.ObjectName.ToString()) + "_" + reference.Address.ToString()
+                                Sanitize(e.ObjectName.ToString()) + "__" + intr.Address.ToString(),
+                                Sanitize(reference.FunctionName ?? e.ObjectName.ToString()) + "__" + reference.Address.ToString()
                             );
                         switch (reference.Type) {
                             case ReferenceType.Normal:
