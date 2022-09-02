@@ -115,7 +115,15 @@ public class SummaryGenerator {
 
                 var functionLines = new Lines("Function " + functionName);
                 foreach (var prop in e.LoadedProperties) {
-                    functionLines.Add(new Lines(prop.SerializedType.ToString() + " " + prop.Name.ToString()));
+                    var flags = new List<string>();
+                    foreach (EPropertyFlags flag in Enum.GetValues(typeof(EPropertyFlags))) {
+                        if (flag != EPropertyFlags.CPF_None && prop.PropertyFlags.HasFlag(flag)) {
+                            flags.Add(flag.ToString());
+                        }
+                    }
+                    var propLines = new Lines($"{prop.SerializedType.ToString()} {prop.Name.ToString()}");
+                    if (flags.Count > 0) propLines.Add(new Lines(String.Join("\\|", flags)));
+                    functionLines.Add(propLines);
                 }
 
                 var functionNode = new Node(Sanitize(functionName));
