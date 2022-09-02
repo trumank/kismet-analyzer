@@ -130,7 +130,7 @@ public class SummaryGenerator {
                 functionNode.Attributes["label"] = LinesToLabel(functionLines);
                 functionNode.Attributes["shape"] = "record";
                 functionNode.Attributes["style"] = "filled";
-                functionNode.Attributes["fillcolor"] = "#ff5555";
+                functionNode.Attributes["fillcolor"] = "#ff8888";
                 Graph.Nodes.Add(functionNode);
                 minRank.Nodes.Add(new Node(Sanitize(functionName)));
 
