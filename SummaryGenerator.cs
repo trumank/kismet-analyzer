@@ -91,21 +91,40 @@ public class SummaryGenerator {
     }
 
     public void Summarize() {
-        var classExport = Asset.GetClassExport();
-        if (classExport != null) {
-            Output.WriteLine("ClassExport: " + classExport.ObjectName);
-            Output.WriteLine("ClassExport.SuperStruct: " + ToString(classExport.SuperStruct));
-            Output.WriteLine("Properties:");
-            foreach (var prop in Asset.GetClassExport().LoadedProperties) {
-                PrintIndent(Output, 0, prop.SerializedType.ToString() + " " + prop.Name.ToString());
-            }
-        } else {
-            Output.WriteLine("No ClassExport");
-        }
-
         var minRank = new Subgraph();
         minRank.Attributes["rank"] = "min";
         Graph.Subgraphs.Add(minRank);
+
+        var classExport = Asset.GetClassExport();
+        if (classExport != null) {
+            var classLines = new Lines($"ClassExport: {classExport.ObjectName}");
+            classLines.Add(new Lines($"SuperStruct: {ToString(classExport.SuperStruct)}"));
+            var propLines = new Lines("Properties:");
+
+            foreach (var prop in classExport.LoadedProperties) {
+                var lines = new Lines($"{prop.SerializedType.ToString()} {prop.Name.ToString()}");
+
+                var flags = new List<string>();
+                foreach (EPropertyFlags flag in Enum.GetValues(typeof(EPropertyFlags))) {
+                    if (flag != EPropertyFlags.CPF_None && prop.PropertyFlags.HasFlag(flag)) {
+                        flags.Add(flag.ToString());
+                    }
+                }
+                if (flags.Count > 0) lines.Add(new Lines(String.Join("\\|", flags)));
+                propLines.Add(lines);
+            }
+            classLines.Add(propLines);
+
+            var classNode = new Node(Sanitize(classExport.ObjectName.ToString()));
+            classNode.Attributes["label"] = LinesToLabel(classLines);
+            classNode.Attributes["shape"] = "record";
+            classNode.Attributes["style"] = "filled";
+            classNode.Attributes["fillcolor"] = "#88ff88";
+            Graph.Nodes.Add(classNode);
+            minRank.Nodes.Add(new Node(classNode.Id));
+        } else {
+            Output.WriteLine("No ClassExport");
+        }
 
         foreach (var export in Asset.Exports) {
             if (export is FunctionExport e) {
