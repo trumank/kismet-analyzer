@@ -716,19 +716,6 @@ public class SummaryGenerator {
                     lines.Add(Stringify(e.MapProperty, ref index, referencedAddresses));
                     index += 4;
                     var ei = -1;
-                    IEnumerable<(KismetExpression, KismetExpression)> Pairs(IEnumerable<KismetExpression> input) {
-                        var e = input.GetEnumerator();
-                        try {
-                            while (e.MoveNext()) {
-                                var a = e.Current;
-                                if (e.MoveNext()) {
-                                    yield return (a, e.Current);
-                                }
-                            }
-                        } finally {
-                            (e as IDisposable)?.Dispose();
-                        }
-                    }
                     foreach (var pair in Pairs(e.Elements)) {
                         ei++;
                         var entry = new Lines($"entry {ei}:");
@@ -737,6 +724,23 @@ public class SummaryGenerator {
                     }
                     index++;
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
+            case EX_MapConst e:
+                {
+                    lines = new Lines("EX_" + e.Inst);
+                    index += 8;
+                    lines.Add("KeyProperty: " + ToString(e.KeyProperty.New.Path));
+                    lines.Add("ValueProperty: " + ToString(e.ValueProperty.New.Path));
+                    index += 4;
+                    var ei = -1;
+                    foreach (var pair in Pairs(e.Elements)) {
+                        ei++;
+                        var entry = new Lines($"entry {ei}:");
+                        lines.Add(Stringify(pair.Item1, ref index, referencedAddresses));
+                        lines.Add(Stringify(pair.Item2, ref index, referencedAddresses));
+                    }
+                    index++;
                     break;
                 }
             case EX_SoftObjectConst e:
@@ -848,6 +852,7 @@ public class SummaryGenerator {
             case EX_False:
             case EX_Nothing:
             case EX_NoObject:
+            case EX_NoInterface:
             case EX_EndOfScript:
                 {
                     lines = new Lines("EX_" + exp.Inst);
@@ -861,6 +866,20 @@ public class SummaryGenerator {
                 }
         }
         return lines;
+    }
+
+    static IEnumerable<(KismetExpression, KismetExpression)> Pairs(IEnumerable<KismetExpression> input) {
+        var e = input.GetEnumerator();
+        try {
+            while (e.MoveNext()) {
+                var a = e.Current;
+                if (e.MoveNext()) {
+                    yield return (a, e.Current);
+                }
+            }
+        } finally {
+            (e as IDisposable)?.Dispose();
+        }
     }
 
     static string ReadString(KismetExpression exp, ref uint index) {
