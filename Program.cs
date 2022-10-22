@@ -5,6 +5,8 @@ using CommandLine;
 using UAssetAPI;
 using UAssetAPI.UnrealTypes;
 using UAssetAPI.ExportTypes;
+using UAssetAPI.PropertyTypes.Objects;
+using UAssetAPI.PropertyTypes.Structs;
 using UAssetAPI.Kismet.Bytecode;
 using UAssetAPI.Kismet.Bytecode.Expressions;
 
@@ -63,6 +65,20 @@ public class Program {
         //public string DestPath { get; set; }
     }
 
+    [Verb("find-schematics", HelpText = "Find all schematics in the game")]
+    class FindSchematicsOptions {}
+
+    [Verb("make-mod-remove-weapon-bobbing", HelpText = "Generate remove weapon bobbing assets")]
+    class ModRemoveWeaponBobbingOptions {
+        [Value(0, Required = true, MetaName = "context", HelpText = "Path to unpacked game files")]
+        public string FSDPath { get; set; }
+        [Value(1, Required = true, MetaName = "source", HelpText = "Path to output directory")]
+        public string OutputPath { get; set; }
+    }
+
+    [Verb("make-mod-remove-all-particles", HelpText = "Generate remove all particles assets")]
+    class ModRemoveAllParticlesOptions {}
+
     static int Main(string[] args) {
         return Parser.Default.ParseArguments<
             RunOptions,
@@ -70,7 +86,12 @@ public class Program {
             CopyImportsOptions,
             GenerateClassHierarchyOptions,
             MergeFunctionsOptions,
-            GenerateOptions
+            GenerateOptions,
+
+            FindSchematicsOptions,
+
+            ModRemoveWeaponBobbingOptions,
+            ModRemoveAllParticlesOptions
                 >(args)
             .MapResult(
                 (RunOptions opts) => Summarize(opts),
@@ -79,7 +100,18 @@ public class Program {
                 (GenerateClassHierarchyOptions opts) => GenerateClassHierarchy(opts),
                 (MergeFunctionsOptions opts) => MergeFunctions(opts),
                 (GenerateOptions opts) => Generate(opts),
+
+                (FindSchematicsOptions opts) => FindSchematics(opts),
+
+                (ModRemoveWeaponBobbingOptions opts) => ModRemoveWeaponBobbing(opts),
+                (ModRemoveAllParticlesOptions opts) => ModRemoveAllParticles(opts),
                 errs => 1);
+    }
+    static IEnumerable<string> GetAssets(string directory) {
+        var enumOptions = new EnumerationOptions();
+        enumOptions.IgnoreInaccessible = true;
+        enumOptions.RecurseSubdirectories = true;
+        return new[] { "*.uasset", "*.umap" }.SelectMany(pattern => Directory.EnumerateFiles(directory, pattern, enumOptions));
     }
     static int Summarize(RunOptions opts) {
         UAsset asset = new UAsset(opts.AssetPath, UE4Version.VER_UE4_27);
@@ -92,13 +124,9 @@ public class Program {
         return 0;
     }
     static int RunTree(RunTreeOptions opts) {
-        var enumOptions = new EnumerationOptions();
-        enumOptions.IgnoreInaccessible = true;
-        enumOptions.RecurseSubdirectories = true;
-        IEnumerable<string> files = Directory.EnumerateFiles(opts.ContentPath, "*.uasset", enumOptions);
-        foreach (var assetPath in files) {
+        foreach (var assetPath in GetAssets(opts.ContentPath)) {
             var outputPath = Path.Join(opts.OutputPath, Path.GetRelativePath(opts.ContentPath, assetPath));
-            Console.WriteLine(outputPath);
+            //Console.WriteLine(outputPath);
 
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
             var asset = new UAsset(assetPath, UE4Version.VER_UE4_27);
@@ -111,11 +139,6 @@ public class Program {
         return 0;
     }
     static int GenerateClassHierarchy(GenerateClassHierarchyOptions opts) {
-        var enumOptions = new EnumerationOptions();
-        enumOptions.IgnoreInaccessible = true;
-        enumOptions.RecurseSubdirectories = true;
-        IEnumerable<string> files = Directory.EnumerateFiles(opts.ContentPath, "*.uasset", enumOptions);
-
         var graph = new Graph("digraph");
         graph.GraphAttributes["rankdir"] = "LR";
 
@@ -123,14 +146,14 @@ public class Program {
             return path.Replace("/", "_").Replace(".", "_").Replace("-", "_");
         }
 
-        foreach (var assetPath in files) {
+        foreach (var assetPath in GetAssets(opts.ContentPath)) {
             var asset = new UAsset(assetPath, UE4Version.VER_UE4_27);
             var classExport = asset.GetClassExport();
             if (classExport != null) {
                 var parent = classExport.SuperStruct.ToImport(asset);
 
                 var assetPackage = Path.Join("/Game", Path.GetRelativePath(opts.ContentPath, Path.GetDirectoryName(assetPath)), Path.GetFileNameWithoutExtension(assetPath));
-                Console.WriteLine($"{assetPackage}.{classExport.ObjectName} : {parent.OuterIndex.ToImport(asset).ObjectName}.{parent.ObjectName}");
+                //Console.WriteLine($"{assetPackage}.{classExport.ObjectName} : {parent.OuterIndex.ToImport(asset).ObjectName}.{parent.ObjectName}");
                 var fullClassName = $"{assetPackage}.{classExport.ObjectName}";
                 var fullParentName = $"{parent.OuterIndex.ToImport(asset).ObjectName}.{parent.ObjectName}";
 
@@ -220,6 +243,390 @@ public class Program {
         UAsset source = new UAsset(opts.SourcePath, UE4Version.VER_UE4_27);
         var generator = new BlueprintGenerator(context, source);
         generator.Generate();
+        return 0;
+    }
+
+    static int FindSchematics(FindSchematicsOptions opts) {
+        var FSDPath = "../../unpacked-exp/FSD";
+        foreach (var assetPath in GetAssets(FSDPath)) {
+            //var file = Path.GetFileName(assetPath);
+            //if (!Path.GetFileName(assetPath).StartsWith("IAS_") || file == "IAS_Snowball.uasset") continue;
+
+            UAsset asset = new UAsset(assetPath, UE4Version.VER_UE4_27);
+            //Console.WriteLine(assetPath);
+            foreach (var export in asset.Exports) {
+                if (export.ClassIndex.IsImport() && export.ClassIndex.ToImport(asset).ObjectName.ToString() == "Schematic" && export is NormalExport e) {
+                    Console.WriteLine($"{assetPath} {export.ObjectName}");
+                    if (e["SaveGameID"] is StructPropertyData idStruct && idStruct.Value[0] is GuidPropertyData id) {
+                        Console.WriteLine(id);
+                    }
+                    if (e["Item"] is ObjectPropertyData objData
+                        && objData.IsExport() &&
+                        objData.ToExport(asset) is NormalExport schematicItem) {
+                        var type = schematicItem.ClassIndex.ToImport(asset).ObjectName.ToString();
+                        switch (type.ToString()) {
+                            case "SkinSchematicItem":
+                            {
+                                if (schematicItem["Skin"] is ObjectPropertyData skinData) {
+                                    if (skinData.IsExport()) {
+                                        //var item3 = skinData.ToExport(asset);
+                                        //Console.WriteLine($"{item3.ObjectName}");
+                                    } else if (skinData.IsImport()) {
+                                        //var item3 = skinData.ToImport(asset);
+                                        //Console.WriteLine($"{item3.ObjectName}");
+                                    } else {
+                                        throw new NotImplementedException("Expected import");
+                                    }
+                                } else {
+                                    throw new NotImplementedException("No ObjectPropertyData \"Skin\"");
+                                }
+                                break;
+                            }
+                            case "VanitySchematicItem":
+                            {
+                                if (schematicItem["Item"] is ObjectPropertyData vanityData) {
+                                    if (vanityData.IsExport() && vanityData.ToExport(asset) is NormalExport vanityItem) {
+                                        if (vanityItem["ItemName"] is TextPropertyData txt) {
+                                            Console.WriteLine(txt.CultureInvariantString);
+                                        } else {
+                                            throw new NotImplementedException("Expected TextPropertyData");
+                                        }
+                                    } else if (vanityData.IsImport()) {
+                                        //throw new NotImplementedException("Expected export");
+                                        //var item3 = vanityData.ToImport(asset);
+                                        //Console.WriteLine($"{item3.ObjectName}");
+                                    } else {
+                                        throw new NotImplementedException("Expected import");
+                                    }
+                                } else {
+                                    throw new NotImplementedException("No ObjectPropertyData \"Item\"");
+                                }
+                                break;
+                            }
+                            case "OverclockShematicItem":
+                            {
+                                break;
+                            }
+                            case "ResourceSchematicItem":
+                            {
+                                break;
+                            }
+                            case "VictoryPoseSchematicItem":
+                            {
+                                break;
+                            }
+                            case "BlankSchematicItem":
+                            {
+                                break;
+                            }
+                            default:
+                            {
+                                throw new NotImplementedException($"Unknown schematic type {type}");
+                            }
+                        }
+                    } else {
+                        throw new NotImplementedException("Expected import");
+                    }
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    static int ModRemoveWeaponBobbing(ModRemoveWeaponBobbingOptions opts) {
+        List<string> fpNames = new List<string> {
+            //"FP_Idle",
+            //"FP_InspectWeapon",
+            //"FP_Walk",
+            //"FP_Sprint",
+            "FP_JumpStart",
+            "FP_JumpLoop",
+            "FP_JumpLand",
+            "FP_JumpLand_Aim",
+            //"FP_Downed",
+        };
+        HashSet<(string, string)> animations = new HashSet<(string, string)>();
+        foreach (var assetPath in GetAssets(opts.FSDPath)) {
+            var file = Path.GetFileName(assetPath);
+            if (!Path.GetFileName(assetPath).StartsWith("IAS_") || file == "IAS_Snowball.uasset") continue;
+            var outputPath = Path.Join(opts.OutputPath, Path.GetRelativePath(opts.FSDPath, assetPath));
+
+            UAsset asset = new UAsset(assetPath, UE4Version.VER_UE4_27);
+            Console.WriteLine(assetPath);
+            foreach (var export in asset.Exports) {
+                if (export.ClassIndex.IsImport() && export.ClassIndex.ToImport(asset).ObjectName.ToString() == "ItemCharacterAnimationSet" && export is NormalExport e) {
+                    Console.WriteLine(export.ObjectName);
+
+                    Dictionary<string, ObjectPropertyData> props = new Dictionary<string, ObjectPropertyData>();
+
+                    foreach (var prop in e.Data) {
+                        var name = prop.Name.ToString();
+                        if (prop is ObjectPropertyData anim) {
+                            props[name] = anim;
+                            if (fpNames.Contains(name)) {
+                                var path = Path.Join(opts.FSDPath, Path.GetRelativePath("/Game", anim.Value.ToImport(asset).OuterIndex.ToImport(asset).ObjectName + ".uasset"));
+                                animations.Add((path, prop.Name.ToString()));
+                            }
+                        }
+                    }
+                    //if (props.ContainsKey("FP_Walk") && props.ContainsKey("FP_Sprint"))
+                        //props["FP_Walk"].Value = props["FP_Sprint"].Value;
+
+                    /*
+                    if (fpWalk != null) {
+                        foreach (var prop in e.Data) {
+                            if (fpNames.Contains(prop.Name.ToString()) && prop is ObjectPropertyData anim) {
+                                anim.Value = fpWalk;
+                            }
+                        }
+                    }
+                    */
+                    break;
+                }
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
+            asset.Write(outputPath);
+            Console.WriteLine(outputPath);
+        }
+
+        foreach (var (assetPath, animationType) in animations) {
+            var outputPath = Path.Join(opts.OutputPath, Path.GetRelativePath(opts.FSDPath, assetPath));
+
+            UAsset asset = new UAsset(assetPath, UE4Version.VER_UE4_27);
+            string? type = null;
+            foreach (var export in asset.Exports) {
+                if (export.ClassIndex.IsImport() && export.ClassIndex.ToImport(asset).ObjectName.ToString() == "AnimSequence" && export is NormalExport e) {
+                    foreach (var prop in e.Data) {
+                        if (prop.Name.ToString() == "NumFrames" && prop is IntPropertyData numFrames) {
+                            //numFrames.Value = 1;
+                        }
+                        if (prop.Name.ToString() == "SequenceLength" && prop is FloatPropertyData sequenceLength) {
+                            if (animationType == "FP_JumpLand") {
+                                sequenceLength.Value = 0.01f;
+                            } else {
+                                sequenceLength.Value = 999999999999;
+                            }
+                        }
+                        if (prop.Name.ToString() == "Skeleton" && prop is ObjectPropertyData skeleton) {
+                            type = skeleton.Value.ToImport(asset).ObjectName.ToString();
+                            //sequenceLength.Value = 0;
+                        }
+                    }
+                    break;
+                }
+            }
+            if (type == "1P_Dwarf_Rig_Skeleton") {
+                Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
+                asset.Write(outputPath);
+                Console.WriteLine(outputPath);
+            }
+
+            //Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
+            //var asset = new UAsset(assetPath, UE4Version.VER_UE4_27);
+        }
+        return 0;
+    }
+
+    static int ModRemoveAllParticles(ModRemoveAllParticlesOptions opts) {
+        UAsset particleAsset = new UAsset("../../FSD/Saved/Cooked/LinuxNoEditor/FSD/Content/_Tests/Dummy/EmptyParticleSystem.uasset", UE4Version.VER_UE4_27);
+        int particleAssetNameIndex = particleAsset.SearchNameReference(new FString("EmptyParticleSystem"));
+        int particleAssetPathIndex = particleAsset.SearchNameReference(new FString("/Game/_Tests/Dummy/EmptyParticleSystem"));
+        UAsset niagaraAsset = new UAsset("../../FSD/Saved/Cooked/LinuxNoEditor/FSD/Content/_Tests/Dummy/EmptyNiagaraSystem.uasset", UE4Version.VER_UE4_27);
+        int niagaraAssetNameIndex = niagaraAsset.SearchNameReference(new FString("EmptyNiagaraSystem"));
+        int niagaraAssetPathIndex = niagaraAsset.SearchNameReference(new FString("/Game/_Tests/Dummy/EmptyNiagaraSystem"));
+
+        string[] exclusions = {
+            "Content/Critters/FesterFlea/Flea/P_Flea_Trail",
+            "Content/Art/Particles/ActorFX/P_GreenMaggot_PoisonCloud",
+            "Content/Art/Particles/ActorFX/Spawning/P_SpawnCloud_Large",
+            "Content/Art/Particles/P_Geyser_EruptAir",
+            "Content/Enemies/Spider/Spitter/P_SpittingSpiderProjectile_A",
+            "Content/Enemies/Spider/Shooter/P_SpiderShooterProjectile_A",
+            "Content/Enemies/Spider/Tank/Particles/P_RadioActive_Cloud",
+            "Content/Enemies/Spider/RapidShooter/P_Spider_RapidShooterProjectile_A",
+            "Content/Enemies/Spider/Particles/P_Spider_Tank_AcidFlame",
+            "Content/Enemies/Spider/Particles/P_Spider_TankIce_Shoot",
+            "Content/Enemies/Spider/Particles/P_Spider_Tank_DeathCloud",
+            "Content/Enemies/Spider/Particles/P_Spider_TankIce_DeathCloud",
+            "Content/Enemies/Spider/Tank/Particles/P_RadioActive_Cloud",
+            "Content/Enemies/Spider/Tank/Particles/P_RadioActive_Cloud_Medium",
+            "Content/Enemies/Spider/Particles/P_Spider_BarrageAttack_A",
+            "Content/Enemies/Spider/Particles/P_Spider_Tank_DeathCloud",
+            "Content/Enemies/Spider/TankBoss/BossTank/P_Spider_Boss_ShootTrail",
+            "Content/Enemies/Spider/TankBoss/BossHeavy/Particles/NS_Rock_Projectile",
+            "Content/Enemies/Spider/TankBoss/BossHeavy/Particles/P_SentinelGoo_AOEpuddle",
+            "Content/Enemies/Spider/TankBoss/BossTwins/P_Spider_BossTwin_SmallShootTrail",
+            "Content/Enemies/Spider/TankBoss/BossTwins/Particles/NS_Twin_Fire_Breath",
+            "Content/Enemies/Spider/TankBoss/BossTwins/Particles/NS_Stomp_Wave",
+            "Content/Enemies/Spider/TankBoss/BossTwins/P_TwinA_Mine_AreaAttackWindup",
+            "Content/Enemies/Spider/TankBoss/BossTwins/P_Spider_BossTwin_Explosion",
+            "Content/Enemies/Spider/TankBoss/BossTwins/P_TwinA_Mine_AreaAttack",
+            "Content/Enemies/Spider/TankBoss/BossTank/P_Spider_Boss_AreaAttack_B",
+            "Content/Enemies/FlyingBug/Bomber/P_BomberGoo_AOEpuddle",
+            "Content/Enemies/FlyingBug/Bomber/P_BomberIce_AOEpuddle",
+            "Content/Enemies/Woodlouse/Particles/P_WoodLouse_Projectile",
+            "Content/LevelElements/RoomObjects/Hazards/InsectSwarm/P_InsectSwarm_A",
+            "Content/Landscape/Biomes/Biomes_Ingame/HollowBough/WaspNest/P_InsectSwarm_Showroom",
+            "Content/GameElements/Missions/Warnings/HeroEnemies/Particle_Effects/NS_HeroEnemy_Beacon_Constant_Big",
+            "Content/GameElements/Missions/Warnings/HeroEnemies/Particle_Effects/NS_HeroEnemy_Beacon_Constant",
+            "Content/Enemies/HydraWeed/Particles/P_HealerSeed_Trail",
+            "Content/Enemies/HydraWeed/Particles/P_ShooterSeed_Trail",
+            "Content/GameElements/Objectives/Facility/DefenseTurret/P_FacilityTurret_Sniperbeam",
+            "Content/GameElements/Objectives/Facility/NS_Facility_Projectile_Power_Sniper",
+            "Content/GameElements/Objectives/Facility/NS_Facility_Projectile",
+            "Content/GameElements/Objectives/Facility/NS_Facility_Projectile",
+            "Content/GameElements/Objectives/Facility/NS_Facility_Projectile_Power",
+            "Content/GameElements/Objectives/Facility/DefensiveTentacles/NS_Defence_Tentacle_Projectile",
+            "Content/Enemies/Spider/ExploderTank/P_ExploderTank_CollectingEmbers",
+            "Content/Enemies/Spider/ExploderTank/P_GhostTank_CollectingEmbers",
+            "Content/Enemies/Spider/Particles/P_SpiderExploderTank_Footstep",
+            "Content/LevelElements/RoomObjects/Hazards/StickyGoo/P_StickyGoo",
+            "Content/LevelElements/RoomObjects/Hazards/PoisonGasFungus/P_PoisonGasFungus_PoisonCloud",
+            "Content/LevelElements/RoomObjects/Hazards/LavaGeyser/P_Geyser_EruptLava_Small_Tell",
+            "Content/LevelElements/RoomObjects/Hazards/ExplodingGooPlant/P_ExplodingGooPlant_AOEpuddle",
+            "Content/LevelElements/RoomObjects/Hazards/SandGeyser/P_Geyser_Sand_Errupt_Outside",
+            "Content/LevelElements/RoomObjects/Hazards/SandGeyser/P_Geyser_Sand_Inside-Idle",
+            "Content/LevelElements/RoomObjects/Hazards/FrostGeyser/P_Geyser_Frost_Errupt_Outside",
+            "Content/LevelElements/RoomObjects/Hazards/FrostGeyser/P_Geyser_Frost_Inside-Idle",
+            "Content/LevelElements/RoomObjects/Hazards/ElectricPlant/Particles/P_ElectroPlantBeam",
+            "Content/LevelElements/Refinery/LiquidMorkite_Well/P_LiquidMorkite_Well",
+            "Content/GameElements/Objectives/Escort/FlyingSmartRocks/P_Heartstone_ConnectionLine",
+            "Content/GameElements/Objectives/Facility/Tethers/NS_Teather_Beam",
+            "Content/GameElements/PawnAffliction/EnemyEffects/Burning/P_Burning_Huge",
+            "Content/GameElements/PawnAffliction/EnemyEffects/Burning/P_Burning_Large",
+            "Content/GameElements/PawnAffliction/EnemyEffects/Burning/P_Burning_Medium",
+            "Content/GameElements/PawnAffliction/EnemyEffects/Burning/P_Burning_Small",
+            "Content/GameElements/PawnAffliction/EnemyEffects/Poisoned/P_PoisonedEnemy_Medium",
+            "Content/GameElements/PawnAffliction/EnemyEffects/Poisoned/P_PoisonedEnemy_Tiny",
+            "Content/GameElements/PawnAffliction/EnemyEffects/Eletrocuted/P_State_Electrocute_2Mid",
+            "Content/GameElements/PawnAffliction/EnemyEffects/Regenerating/P_RegenrativeEnemies_FX",
+            "Content/GameElements/Drone/P_Drone_Tracer",
+            "Content/GameElements/Drone/P_Bosco_Rocket_Trail",
+            "Content/WeaponsNTools/Extractor/P_OilExtractor_BeamActive",
+            "Content/WeaponsNTools/Extractor/P_OilExtractor_BeamInactive",
+            "Content/WeaponsNTools/SentryGun/P_Sentry_Tracer",
+            "Content/WeaponsNTools/SentryGun/SentryGun_Engineer/P_OverchargeProjectile_Trail",
+            "Content/Enemies/Spider/Tank/Particles/P_RadioActive_Cloud_Large",
+            "Content/WeaponsNTools/LineCutter/Particles/P_Plasma_Projectile",
+            "Content/WeaponsNTools/LineCutter/Particles/P_PlasmaBeam_PlasmaTrailSegment",
+            "Content/WeaponsNTools/SentryGun/P_ElectrocutedTurret",
+            "Content/GameElements/GameEvents/AmberEvent/Particles/P_AmberEvent_Explosion",
+            "Content/WeaponsNTools/ChargeBlaster/Particles/P_ChargedProjectileExplodeBig",
+            "Content/WeaponsNTools/ChargeBlaster/Particles/P_ChargedProjectile_Persistance",
+            "Content/WeaponsNTools/ChargeBlaster/Particles/P_UPG_Charged_AOE",
+            "Content/WeaponsNTools/FlameThrower/Particles/P_WPN_Environment_StickyFlame",
+            "Content/WeaponsNTools/FlameThrower/Particles/P_WPN_Flamethrower_Plume_1stPerson",
+            "Content/WeaponsNTools/FlameThrower/Particles/P_UPG_Flamethrower_HighPressure_1stPerson_New",
+            "Content/WeaponsNTools/FlameThrower/Particles/P_UPG_Flamethrower_VeryHighPressure_1stPerson",
+            "Content/WeaponsNTools/Cryospray/Particles/P_WPN_Cryospray_Impact",
+            "Content/WeaponsNTools/Cryospray/Particles/P_WPN_Cryospray_1stPerson",
+            "Content/WeaponsNTools/Cryospray/Particles/P_WPN_Cryospray_3rdPerson",
+            "Content/WeaponsNTools/Cryospray/Particles/P_WPN_Environment_StickyFrost",
+            "Content/WeaponsNTools/Grenades/Neurotoxin/P_Grenade_Neurotoxin_Cloud",
+            "Content/WeaponsNTools/GooCannon/Particles/NS_Goo_Projectile",
+            "Content/WeaponsNTools/GooCannon/Particles/NS_Goo_Puddle",
+            "Content/WeaponsNTools/GooCannon/Particles/NS_GooCannon_DoT",
+            "Content/WeaponsNTools/GooCannon/Particles/NS_GooCannon_DoT_Large",
+            "Content/WeaponsNTools/GooCannon/Particles/NS_GooCannon_DoT_XLarge",
+            "Content/WeaponsNTools/Autocannon/Particles/NS_AutoCannon_ShotImpact",
+            "Content/WeaponsNTools/Grenades/Incendiary/P_Grenade_Incendiary_Flames",
+            "Content/WeaponsNTools/Grenades/IFG/P_Grenade_IFG_Explosion_A_AttemptingGFXfix",
+            "Content/WeaponsNTools/Grenades/Pheromone/P_Grenade_Pheromone_Soaked",
+            "Content/WeaponsNTools/PlasmaCarbine/Particles/NS_PlasmaCarbine_Projectile",
+            "Content/WeaponsNTools/Crossbow/Particles/NS_Crossbow_Bodkin",
+            "Content/WeaponsNTools/Crossbow/Particles/",
+            "Content/Art/Environments/Holiday_Halloween/",
+            "Content/Art/Environments/Holiday_Xmas/",
+            "Content/Art/Environments/SpaceRig/",
+            "Content/Art/Environments/SpaceRig_Exterior/",
+            "Content/GameElements/Bar/",
+            "Content/CharacterStructure/Forge/",
+            "Content/Character/",
+            "Content/CharacterStructure/Gear_Unarmed/TP/EndScreenAnims/Attachments/",
+            "Content/Enemies/Spider/Exploder/P_BarrelExplosion",
+            "Content/Enemies/Spider/Buffer/p_BufferArc",
+            "Content/Enemies/HydraWeed/Particles/p_HydraWeed_BuffLine",
+            "Content/WeaponsNTools/CoilGun/Assets/Particles/P_WPN_Environment_Coilgun_StickyFlame",
+            "Content/WeaponsNTools/CoilGun/Assets/Particles/NS_CoilGun_Multi_Trail",
+            "Content/WeaponsNTools/Autocannon/Overclocks/OC_BonusesAndPenalties/NS_OC_NeuroToxin_Payload",
+            "Content/WeaponsNTools/HeavyParticleCannon/Particles/NS_HPC_Volatile_Impact_Reactor",
+        };
+        string[] weaponsntools = {
+            "Content/WeaponsNTools/",
+            "Content/GameElements/Drone/",
+        };
+        var unmatched = new HashSet<string>(exclusions);
+
+        var FSDPath = "../../unpacked-exp/FSD";
+        var OutputRemoveParticles = "../../unpacked-mods/remove-all-particles";
+        var OutputRemoveParticlesButWeaponsNTools = "../../unpacked-mods/remove-all-particles-but-weaponsntools";
+        try { Directory.Delete(OutputRemoveParticles, true); } catch {}
+        try { Directory.Delete(OutputRemoveParticlesButWeaponsNTools, true); } catch {}
+
+        foreach (var assetPath in GetAssets(FSDPath)) {
+            var relPath = Path.GetRelativePath(FSDPath, Path.ChangeExtension(assetPath, null));
+
+            var exclude = false;
+            foreach (var ex in exclusions) {
+                if (relPath.StartsWith(ex)) {
+                    unmatched.Remove(ex);
+                    exclude = true;
+                    // cannot break out early as some exclusions won't match and will cause a warning
+                }
+            }
+            if (exclude) {
+                continue;
+            }
+
+            UAsset asset = new UAsset(assetPath, UE4Version.VER_UE4_27);
+            foreach (var export in asset.Exports) {
+                if (export.ClassIndex.IsImport()) {
+                    var assetType = export.ClassIndex.ToImport(asset).ObjectName.ToString();
+
+                    var name = Path.GetFileNameWithoutExtension(assetPath);
+                    var path = Path.Combine("/Game/Content/", relPath);
+                    UAsset? empty = null;
+                    if (assetType == "ParticleSystem") {
+                        empty = particleAsset;
+                        empty.SetNameReference(particleAssetNameIndex, new FString(name));
+                        empty.SetNameReference(particleAssetPathIndex, new FString(path));
+                    } else if (assetType == "NiagaraSystem") {
+                        empty = niagaraAsset;
+                        empty.SetNameReference(niagaraAssetNameIndex, new FString(name));
+                        empty.SetNameReference(niagaraAssetPathIndex, new FString(path));
+                    }
+
+                    if (empty != null) {
+                        var withExtension = $"{relPath}.uasset";
+
+                        var outPath = Path.Join(OutputRemoveParticles, withExtension);
+                        Directory.CreateDirectory(Path.GetDirectoryName(outPath));
+                        empty.Write(outPath);
+
+                        var excludeWNT = false;
+                        foreach (var ex in weaponsntools) {
+                            if (relPath.StartsWith(ex)) {
+                                excludeWNT = true;
+                            }
+                        }
+                        if (!excludeWNT) {
+                            var outPathWNT = Path.Join(OutputRemoveParticlesButWeaponsNTools, withExtension);
+                            Directory.CreateDirectory(Path.GetDirectoryName(outPathWNT));
+                            empty.Write(outPathWNT);
+                        }
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        foreach (var ex in unmatched) {
+            Console.Error.WriteLine($"WARNING: Exclusion {ex} did not have any matches");
+        }
+
         return 0;
     }
 }
