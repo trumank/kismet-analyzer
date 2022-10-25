@@ -142,10 +142,6 @@ public class Program {
         var graph = new Graph("digraph");
         graph.GraphAttributes["rankdir"] = "LR";
 
-        string Sanitize(string path) {
-            return path.Replace("/", "_").Replace(".", "_").Replace("-", "_");
-        }
-
         foreach (var assetPath in GetAssets(opts.ContentPath)) {
             var asset = new UAsset(assetPath, UE4Version.VER_UE4_27);
             var classExport = asset.GetClassExport();
@@ -157,12 +153,12 @@ public class Program {
                 var fullClassName = $"{assetPackage}.{classExport.ObjectName}";
                 var fullParentName = $"{parent.OuterIndex.ToImport(asset).ObjectName}.{parent.ObjectName}";
 
-                var classNode = new Node(Sanitize(fullClassName));
+                var classNode = new Node(fullClassName);
                 classNode.Attributes["label"] = classExport.ObjectName.ToString();
                 classNode.Attributes["URL"] = Path.Join("out/Content/", Path.GetRelativePath(opts.ContentPath, Path.GetDirectoryName(assetPath)), Path.ChangeExtension(Path.GetFileName(assetPath), ".svg"));
                 graph.Nodes.Add(classNode);
 
-                var edge = new Edge(Sanitize(fullClassName), Sanitize(fullParentName));
+                var edge = new Edge(fullClassName, fullParentName);
                 graph.Edges.Add(edge);
             }
         }

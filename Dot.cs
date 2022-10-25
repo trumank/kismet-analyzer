@@ -27,7 +27,7 @@ public class Subgraph : AbstractGraph, IStatement {
     }
 
     public void Write(TextWriter writer) {
-        if (Id != null) writer.WriteLine(Id);
+        if (Id != null) writer.WriteLine(AbstractGraph.EscapeId(Id));
         writer.WriteLine("{");
         WriteStatements(writer);
         writer.WriteLine("}");
@@ -65,6 +65,10 @@ public abstract class AbstractGraph {
         writer.Write($"{label} ");
         attributes.Write(writer);
     }
+
+    public static string EscapeId(string id) {
+        return $"\"{id.Replace("\"", "\\\"")}\"";
+    }
 }
 
 public class Attributes : Dictionary<string, string> {
@@ -88,7 +92,7 @@ public class Node : IStatement {
         Id = id;
     }
     public void Write(TextWriter writer) {
-        writer.Write(Id);
+        writer.Write(AbstractGraph.EscapeId(Id));
         if (Attributes.Count > 0) {
             writer.Write(" ");
             Attributes.Write(writer);
@@ -99,14 +103,24 @@ public class Node : IStatement {
 }
 public class Edge : IStatement {
     public string A { get; set; }
+    public string? ACompass { get; set; }
     public string B { get; set; }
+    public string? BCompass { get; set; }
     public Attributes Attributes { get; } = new Attributes();
     public Edge(string a, string b) {
         A = a;
+        ACompass = null;
         B = b;
+        BCompass = null;
+    }
+    public Edge(string a, string aCompass, string b, string bCompass) {
+        A = a;
+        ACompass = aCompass;
+        B = b;
+        BCompass = bCompass;
     }
     public void Write(TextWriter writer) {
-        writer.Write($"{A} -> {B}");
+        writer.Write($"{AbstractGraph.EscapeId(A)}{(ACompass == null ? "" : ":" + ACompass)} -> {AbstractGraph.EscapeId(B)}{(BCompass == null ? "" : ":" + BCompass)}");
         if (Attributes.Count > 0) {
             writer.Write(" ");
             Attributes.Write(writer);

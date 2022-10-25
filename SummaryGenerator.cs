@@ -1,5 +1,7 @@
 namespace KismetAnalyzer;
 
+using System.Text.RegularExpressions;
+
 using UAssetAPI;
 using UAssetAPI.UnrealTypes;
 using UAssetAPI.ExportTypes;
@@ -115,7 +117,7 @@ public class SummaryGenerator {
             }
             classLines.Add(propLines);
 
-            var classNode = new Node(Sanitize(classExport.ObjectName.ToString()));
+            var classNode = new Node(classExport.ObjectName.ToString());
             classNode.Attributes["label"] = LinesToLabel(classLines);
             classNode.Attributes["shape"] = "record";
             classNode.Attributes["style"] = "filled";
@@ -145,15 +147,15 @@ public class SummaryGenerator {
                     functionLines.Add(propLines);
                 }
 
-                var functionNode = new Node(Sanitize(functionName));
+                var functionNode = new Node(functionName);
                 functionNode.Attributes["label"] = LinesToLabel(functionLines);
                 functionNode.Attributes["shape"] = "record";
                 functionNode.Attributes["style"] = "filled";
                 functionNode.Attributes["fillcolor"] = "#ff8888";
                 Graph.Nodes.Add(functionNode);
-                minRank.Nodes.Add(new Node(Sanitize(functionName)));
+                minRank.Nodes.Add(new Node(functionName));
 
-                var functionEdge = new Edge(Sanitize(functionName), Sanitize(functionName) + "__0");
+                var functionEdge = new Edge(functionName, functionName + "__0");
                 Graph.Edges.Add(functionEdge);
 
                 uint index = 0;
@@ -164,7 +166,7 @@ public class SummaryGenerator {
                         Output.WriteLine(prefix.PadRight((nest + 2) * 4) + line);
                     }
 
-                    var node = new Node(Sanitize(e.ObjectName.ToString()) + "__" + intr.Address.ToString());
+                    var node = new Node($"{e.ObjectName.ToString()}__{intr.Address.ToString()}");
                     node.Attributes["label"] = LinesToLabel(intr.Content);
                     node.Attributes["shape"] = "record";
                     node.Attributes["style"] = "filled";
@@ -172,8 +174,8 @@ public class SummaryGenerator {
 
                     foreach (var reference in intr.ReferencedAddresses) {
                         var edge = new Edge(
-                                Sanitize(e.ObjectName.ToString()) + "__" + intr.Address.ToString(),
-                                Sanitize(reference.FunctionName ?? e.ObjectName.ToString()) + "__" + reference.Address.ToString()
+                                $"{e.ObjectName.ToString()}__{intr.Address.ToString()}",
+                                $"{reference.FunctionName ?? e.ObjectName.ToString()}__{reference.Address.ToString()}"
                             );
                         switch (reference.Type) {
                             case ReferenceType.Normal:
@@ -185,7 +187,7 @@ public class SummaryGenerator {
                                     edge.Attributes["label"] = "IF NOT";
                                     edge.Attributes["color"] = "red";
                                     edge.Attributes["arrowhead"] = "onormal";
-                                    edge.A += ":e";
+                                    edge.ACompass = "e";
                                     break;
                                 }
                             case ReferenceType.JumpTrue:
@@ -199,7 +201,7 @@ public class SummaryGenerator {
                                     edge.Attributes["label"] = "PUSH STACK";
                                     edge.Attributes["color"] = "red";
                                     edge.Attributes["arrowhead"] = "onormal";
-                                    edge.A += ":e";
+                                    edge.ACompass = "e";
                                     break;
                                 }
                             case ReferenceType.Skip:
@@ -207,7 +209,7 @@ public class SummaryGenerator {
                                 {
                                     edge.Attributes["color"] = "red";
                                     edge.Attributes["arrowhead"] = "onormal";
-                                    edge.A += ":e";
+                                    edge.ACompass = "e";
                                     break;
                                 }
                         }
@@ -220,19 +222,13 @@ public class SummaryGenerator {
         Graph.Write(DotOutput);
     }
 
-    public static string Sanitize(string str) {
-        return str
-            .Replace(" ", "_")
-            .Replace("-", "_")
-            .Replace("+", "_");
-    }
-
     public static string SanitizeLabel(string str) {
         return str
             .Replace("{", "\\{")
             .Replace("}", "\\}")
             .Replace(">", "&gt;")
-            .Replace("<", "&lt;");
+            .Replace("<", "&lt;")
+            .Replace("\"", "\\\"");
     }
 
     public static string LinesToLabel(Lines lines) {
