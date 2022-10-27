@@ -566,7 +566,7 @@ public class Kismet {
             var prop = fnSrc.LoadedProperties.First(l => l.Name.ToString() == p.Path[0].ToString());
             if (prop == null) throw new NotImplementedException("Property missing");
 
-            var existing = fnDst.LoadedProperties.First(l => l.Name.ToString() == p.Path[0].ToString());
+            var existing = fnDst.LoadedProperties.FirstOrDefault(l => l.Name.ToString() == p.Path[0].ToString(), null);
             if (existing == null) { // prop doesn't already exist so copy it over
                 // TODO check type of prop == existing, only checking by name currently
                 fnDst.LoadedProperties = fnDst.LoadedProperties.Append(CopyProperty(prop, src, dst)).ToArray();
