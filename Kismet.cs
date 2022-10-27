@@ -634,6 +634,20 @@ public class Kismet {
                         Value = e.Value,
                     };
                 }
+            case EX_VectorConst e:
+                {
+                    return new EX_VectorConst() {
+                        Value = e.Value,
+                    };
+                }
+            case EX_RotationConst e:
+                {
+                    return new EX_RotationConst() {
+                        Pitch = e.Pitch,
+                        Yaw = e.Yaw,
+                        Roll = e.Roll,
+                    };
+                }
             case EX_StringConst e:
                 {
                     return new EX_StringConst() {
