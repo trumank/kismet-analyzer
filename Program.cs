@@ -29,6 +29,14 @@ public class Program {
         public string OutputPath { get; set; }
     }
 
+    [Verb("tree-to-json", HelpText = "Convert directory of cooked assets to JSON")]
+    class TreeToJsonOptions {
+        [Value(0, Required = true, MetaName = "content", HelpText = "Path of cooked assets directory")]
+        public string ContentPath { get; set; }
+        [Value(1, Required = true, MetaName = "output", HelpText = "Path of JSON output directory")]
+        public string OutputPath { get; set; }
+    }
+
     [Verb("copy-imports", HelpText = "Copies imports from one asset to another and returns the new index")]
     class CopyImportsOptions {
         [Value(0, Required = true, MetaName = "from", HelpText = "Path of the asset to copy imports from")]
@@ -83,6 +91,7 @@ public class Program {
         return Parser.Default.ParseArguments<
             RunOptions,
             RunTreeOptions,
+            TreeToJsonOptions,
             CopyImportsOptions,
             GenerateClassHierarchyOptions,
             MergeFunctionsOptions,
@@ -96,6 +105,7 @@ public class Program {
             .MapResult(
                 (RunOptions opts) => Summarize(opts),
                 (RunTreeOptions opts) => RunTree(opts),
+                (TreeToJsonOptions opts) => TreeToJson(opts),
                 (CopyImportsOptions opts) => CopyImports(opts),
                 (GenerateClassHierarchyOptions opts) => GenerateClassHierarchy(opts),
                 (MergeFunctionsOptions opts) => MergeFunctions(opts),
@@ -135,6 +145,19 @@ public class Program {
             new SummaryGenerator(asset, output, dotOutput).Summarize();
             output.Close();
             dotOutput.Close();
+        }
+        return 0;
+    }
+    static int TreeToJson(TreeToJsonOptions opts) {
+        foreach (var assetPath in GetAssets(opts.ContentPath)) {
+            var outputPath = Path.ChangeExtension(Path.Join(opts.OutputPath, Path.GetRelativePath(opts.ContentPath, assetPath)), ".json");
+
+            var asset = new UAsset(assetPath, UE4Version.VER_UE4_27);
+
+            string jsonSerializedAsset = new UAsset(assetPath, UE4Version.VER_UE4_27).SerializeJson(Newtonsoft.Json.Formatting.Indented);
+            Console.WriteLine(outputPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
+            File.WriteAllText(outputPath, jsonSerializedAsset);
         }
         return 0;
     }
