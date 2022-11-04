@@ -750,6 +750,12 @@ public class Kismet {
                         Elements = e.Elements.Select(p => CopyExpressionTo(p, src, dst, fnSrc, fnDst)).ToArray(),
                     };
                 }
+            case EX_InstanceVariable e:
+                {
+                    return new EX_InstanceVariable() {
+                        Variable = CopyKismetPropertyPointer(e.Variable, src, dst, fnSrc, fnDst),
+                    };
+                }
             default:
                 {
                     throw new NotImplementedException(exp.ToString());
