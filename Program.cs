@@ -250,7 +250,6 @@ public class Program {
                     }
                 }
                 if (!found) Console.Error.WriteLine($"Could not find matching function for {fnSrc.ObjectName} in dest asset");
-                break;
             }
         }
         dest.Write(opts.DestPath);
