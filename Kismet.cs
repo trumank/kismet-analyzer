@@ -150,26 +150,26 @@ public class Kismet {
                             }
                         case EBlueprintTextLiteralType.LocalizedText:
                             {
-                                index += GetStringSize(e.Value.LocalizedSource);
-                                index += GetStringSize(e.Value.LocalizedKey);
-                                index += GetStringSize(e.Value.LocalizedNamespace);
+                                index += GetSize(e.Value.LocalizedSource);
+                                index += GetSize(e.Value.LocalizedKey);
+                                index += GetSize(e.Value.LocalizedNamespace);
                                 break;
                             }
                         case EBlueprintTextLiteralType.InvariantText:
                             {
-                                index += GetStringSize(e.Value.InvariantLiteralString);
+                                index += GetSize(e.Value.InvariantLiteralString);
                                 break;
                             }
                         case EBlueprintTextLiteralType.LiteralString:
                             {
-                                index += GetStringSize(e.Value.LiteralString);
+                                index += GetSize(e.Value.LiteralString);
                                 break;
                             }
                         case EBlueprintTextLiteralType.StringTableEntry:
                             {
                                 index += 8;
-                                index += GetStringSize(e.Value.StringTableId);
-                                index += GetStringSize(e.Value.StringTableKey);
+                                index += GetSize(e.Value.StringTableId);
+                                index += GetSize(e.Value.StringTableKey);
                                 break;
                             }
                     }
@@ -324,7 +324,7 @@ public class Kismet {
                 }
             case EX_StringConst e:
                 {
-                    index += GetStringSize(e);
+                    index += (uint) (e.Value.Length + 1);
                     break;
                 }
             case EX_SkipOffsetConst e:
@@ -375,21 +375,6 @@ public class Kismet {
                 }
         }
         return index;
-    }
-
-    static uint GetStringSize(KismetExpression exp) {
-        switch (exp) {
-            case EX_StringConst e:
-                {
-                    return (uint) (e.Value.Length + 1);
-                }
-            case EX_UnicodeStringConst e:
-                {
-                    return (uint) (2 * (e.Value.Length + 1));
-                }
-            default:
-                throw new Exception("ReadString called on non-string");
-        }
     }
 
     public static void ShiftAddressses(KismetExpression exp, int offset) {
