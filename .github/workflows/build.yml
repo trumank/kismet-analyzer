@@ -30,3 +30,23 @@ jobs:
         with:
           name: ${{ github.event.repository.name }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.rid }}
           path: ${{ matrix.rid }}
+
+  release:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Variables
+        id: vars
+        run: echo sha_short=${GITHUB_SHA::7} >> $GITHUB_OUTPUT
+      - uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Development Build"
+          files: |
+            artifacts/*
