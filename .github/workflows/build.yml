@@ -36,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
 
     needs: [build]
+
     steps:
       - name: Variables
         id: vars
@@ -43,6 +44,8 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           path: artifacts
+      - run: for a in artifacts/*; do zip -r "$a.zip" "$a"; done
+        working-directory: artifacts
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
@@ -50,4 +53,4 @@ jobs:
           prerelease: true
           title: "Development Build"
           files: |
-            artifacts/*
+            artifacts/*.zip
