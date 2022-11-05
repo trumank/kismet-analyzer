@@ -44,7 +44,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           path: artifacts
-      - run: for a in artifacts/*; do zip -r "$a.zip" "$a"; done
+      - run: for a in *; do zip -r "$a.zip" "$a"; done
         working-directory: artifacts
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
