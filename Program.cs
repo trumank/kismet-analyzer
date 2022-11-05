@@ -1,6 +1,8 @@
 namespace KismetAnalyzer;
 
 using System.CommandLine;
+using System.CommandLine.Builder;
+using System.CommandLine.Parsing;
 
 using UAssetAPI;
 using UAssetAPI.UnrealTypes;
@@ -108,7 +110,18 @@ Leading underscores can be used to work around special function names being ille
         makeModRemoveAllParticles.SetHandler(MakeModRemoveAllParticles);
         rootCommand.AddCommand(makeModRemoveAllParticles);
 
-        rootCommand.Invoke(args);
+        new CommandLineBuilder(rootCommand)
+           .UseVersionOption()
+           .UseHelp()
+           .UseEnvironmentVariableDirective()
+           .UseParseDirective()
+           .UseSuggestDirective()
+           .UseTypoCorrections()
+           .UseParseErrorReporting()
+           .UseExceptionHandler()
+           .CancelOnProcessTermination()
+           .Build()
+           .Invoke(args);
 
         return 0;
     }
