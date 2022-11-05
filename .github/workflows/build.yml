@@ -7,7 +7,14 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        rid: ['win-x64', 'linux-x64', 'osx-x64']
+
     steps:
+      - name: Variables
+        id: vars
+        run: echo sha_short=${GITHUB_SHA::7} >> $GITHUB_OUTPUT
       - uses: actions/checkout@v3
         with:
           submodules: recursive
@@ -18,4 +25,8 @@ jobs:
       - name: Install dependencies
         run: dotnet restore
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet publish --sc false -r ${{ matrix.rid }} -c release -o ${{ matrix.rid }} -p:PublishSingleFile=true
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ${{ github.event.repository.name }}-${{ steps.vars.outputs.sha_short }}-${{ matrix.rid }}
+          path: ${{ matrix.rid }}
