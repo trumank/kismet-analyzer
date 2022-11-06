@@ -285,7 +285,7 @@ public class SummaryGenerator {
                 }
             case EX_LocalVariable e:
                 {
-                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.Variable.New.Path));
+                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.Variable));
                     index += 8;
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
@@ -294,20 +294,20 @@ public class SummaryGenerator {
                 {
                     lines = new Lines("EX_" + e.Inst);
                     index += 8;
-                    lines.Add(ToString(e.Variable.New.Path));
+                    lines.Add(ToString(e.Variable));
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
             case EX_DefaultVariable e:
                 {
-                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.Variable.New.Path));
+                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.Variable));
                     index += 8;
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
             case EX_InstanceVariable e:
                 {
-                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.Variable.New.Path));
+                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.Variable));
                     index += 8;
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
@@ -331,7 +331,7 @@ public class SummaryGenerator {
             case EX_Let e:
                 {
                     lines = new Lines("EX_" + e.Inst);
-                    //PrintIndent(Output, indent + 1, "value = " + ToString(e.Value.New.Path)); ?? same as variable
+                    //PrintIndent(Output, indent + 1, "value = " + ToString(e.Value)); ?? same as variable
                     index += 8;
                     lines.Add(Stringify(e.Variable, ref index, referencedAddresses));
                     lines.Add(Stringify(e.Expression, ref index, referencedAddresses));
@@ -364,7 +364,7 @@ public class SummaryGenerator {
                 }
             case EX_LetValueOnPersistentFrame e:
                 {
-                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.DestinationProperty.New.Path));
+                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.DestinationProperty));
                     index += 8;
                     lines.Add(Stringify(e.AssignmentExpression, ref index, referencedAddresses));
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
@@ -372,7 +372,7 @@ public class SummaryGenerator {
                 }
             case EX_StructMemberContext e:
                 {
-                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.StructMemberExpression.New.Path));
+                    lines = new Lines("EX_" + e.Inst + " " + ToString(e.StructMemberExpression));
                     index += 8;
                     lines.Add(Stringify(e.StructExpression, ref index, referencedAddresses));
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
@@ -545,7 +545,7 @@ public class SummaryGenerator {
                     //lines.Add("SkipOffsetForNull = " + e.Offset);
                     index += 8;
                     lines.Add(Stringify(e.ContextExpression, ref index, referencedAddresses));
-                    lines.Add("RValue = " + ToString(e.RValuePointer.New.Path));
+                    lines.Add("RValue = " + ToString(e.RValuePointer));
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
@@ -726,8 +726,8 @@ public class SummaryGenerator {
                 {
                     lines = new Lines("EX_" + e.Inst);
                     index += 8;
-                    lines.Add("KeyProperty: " + ToString(e.KeyProperty.New.Path));
-                    lines.Add("ValueProperty: " + ToString(e.ValueProperty.New.Path));
+                    lines.Add("KeyProperty: " + ToString(e.KeyProperty));
+                    lines.Add("ValueProperty: " + ToString(e.ValueProperty));
                     index += 4;
                     var ei = -1;
                     foreach (var pair in Pairs(e.Elements)) {
@@ -806,7 +806,7 @@ public class SummaryGenerator {
                 {
                     lines = new Lines("EX_" + e.Inst + " " + e.Value);
                     index += 8;
-                    lines.Add(ToString(e.InnerProperty.New.Path));
+                    lines.Add(ToString(e.InnerProperty));
                     index += 4;
                     foreach (var arg in e.Elements) {
                         lines.Add(Stringify(arg, ref index, referencedAddresses));
@@ -895,6 +895,16 @@ public class SummaryGenerator {
                 Console.Error.WriteLine("WARN: ReadString called on non-string");
                 return "ERR";
         }
+    }
+
+    string ToString(KismetPropertyPointer pointer) {
+        if (pointer.Old != null) {
+            return ToString(pointer.Old);
+        }
+        if (pointer.New != null) {
+            return ToString(pointer.New.Path);
+        }
+        throw new Exception("Unreachable");
     }
 
     string ToString(FPackageIndex index) {
