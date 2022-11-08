@@ -69,7 +69,7 @@ public class Program {
         genCfgTree.SetHandler(GenCfgTree, ueVersion, assetInputDirectory, cfgOutputDiretory);
         rootCommand.AddCommand(genCfgTree);
 
-        var genJsonTree = new Command("get-json-tree", "Generate JSON representation of assets");
+        var genJsonTree = new Command("gen-json-tree", "Generate JSON representation of assets");
         genJsonTree.Add(assetInputDirectory);
         genJsonTree.Add(jsonOutputDiretory);
         genJsonTree.SetHandler(GenJsonTree, ueVersion, assetInputDirectory, jsonOutputDiretory);
