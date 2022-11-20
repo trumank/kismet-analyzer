@@ -30,6 +30,9 @@ public class Program {
         var assetInput = new Argument<string>
             (name: "input",
             description: "Path to asset");
+        var assetOutput = new Argument<string>
+            (name: "output",
+            description: "Path to asset");
         var assetInputDirectory = new Argument<string>
             (name: "input",
             description: "Path to asset input directory");
@@ -39,6 +42,9 @@ public class Program {
         var cfgOutputDiretory = new Argument<string>
             (name: "output",
             description: "Path to CFG output directory");
+        var jsonOutput = new Argument<string>
+            (name: "output",
+            description: "Path to JSON output");
         var jsonOutputDiretory = new Argument<string>
             (name: "output",
             description: "Path to JSON output directory");
@@ -74,6 +80,21 @@ public class Program {
         genJsonTree.Add(jsonOutputDiretory);
         genJsonTree.SetHandler(GenJsonTree, ueVersion, assetInputDirectory, jsonOutputDiretory);
         rootCommand.AddCommand(genJsonTree);
+
+        var toJson = new Command("to-json", "Convert binary asset to JSON");
+        toJson.Add(assetInput);
+        toJson.SetHandler(ToJson, ueVersion, assetInput);
+        rootCommand.AddCommand(toJson);
+
+        var read = new Command("read", "Read asset into memory");
+        read.Add(assetInput);
+        read.SetHandler(Read, ueVersion, assetInput);
+        rootCommand.AddCommand(read);
+
+        var fromJson = new Command("from-json", "Convert JSON to binary asset");
+        fromJson.Add(assetOutput);
+        fromJson.SetHandler(FromJson, ueVersion, assetOutput);
+        rootCommand.AddCommand(fromJson);
 
         var genBlueprint = new Command("gen-blueprint", "Generate blueprint asset");
         genBlueprint.Add(contextPath);
@@ -166,6 +187,16 @@ Leading underscores can be used to work around special function names being ille
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
             File.WriteAllText(outputPath, jsonSerializedAsset);
         }
+    }
+    static void ToJson(EngineVersion ueVersion, string assetInput) {
+        Console.WriteLine(new UAsset(assetInput, ueVersion).SerializeJson(Newtonsoft.Json.Formatting.Indented));
+    }
+    static void Read(EngineVersion ueVersion, string assetInput) {
+        new UAsset(assetInput, ueVersion);
+        Console.WriteLine("complete");
+    }
+    static void FromJson(EngineVersion ueVersion, string assetOutput) {
+        UAsset.DeserializeJson(Console.OpenStandardInput()).Write(assetOutput);
     }
     static void GenHierarchy(EngineVersion ueVersion, string assetInputDir, string hierarchyOutput) {
         var graph = new Graph("digraph");
