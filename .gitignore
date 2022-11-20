@@ -1,2 +1,6 @@
 /bin
 /obj
+*.nettrace
+*.speedscope.json
+*.etlx
+*.chromium.json
