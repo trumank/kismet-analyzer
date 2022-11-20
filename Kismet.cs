@@ -476,6 +476,22 @@ public class Kismet {
                         Flags = p.Flags,
                     };
                 }
+            case FInterfaceProperty p:
+                {
+                    return new FInterfaceProperty() {
+                        InterfaceClass = CopyImportTo((src, p.InterfaceClass), dst),
+                        ArrayDim = p.ArrayDim,
+                        ElementSize = p.ElementSize,
+                        PropertyFlags = p.PropertyFlags,
+                        RepIndex = p.RepIndex,
+                        RepNotifyFunc = p.RepNotifyFunc.Transfer(dst),
+                        BlueprintReplicationCondition = p.BlueprintReplicationCondition,
+                        RawValue = p.RawValue, // TODO is this ever not null?
+                        SerializedType = p.SerializedType.Transfer(dst),
+                        Name = p.Name.Transfer(dst),
+                        Flags = p.Flags,
+                    };
+                }
             case FStructProperty p:
                 {
                     return new FStructProperty() {
@@ -740,6 +756,19 @@ public class Kismet {
                     return new EX_StructMemberContext() {
                         StructMemberExpression = CopyKismetPropertyPointer(e.StructMemberExpression, src, dst, fnSrc, fnDst),
                         StructExpression = CopyExpressionTo(e.StructExpression, src, dst, fnSrc, fnDst),
+                    };
+                }
+            case EX_InterfaceContext e:
+                {
+                    return new EX_InterfaceContext() {
+                        InterfaceValue = CopyExpressionTo(e.InterfaceValue, src, dst, fnSrc, fnDst),
+                    };
+                }
+            case EX_VirtualFunction e:
+                {
+                    return new EX_VirtualFunction() {
+                        VirtualFunctionName = e.VirtualFunctionName.Transfer(dst),
+                        Parameters = e.Parameters.Select(p => CopyExpressionTo(p, src, dst, fnSrc, fnDst)).ToArray(),
                     };
                 }
             case EX_SetArray e:
