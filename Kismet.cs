@@ -785,6 +785,27 @@ public class Kismet {
                         Variable = CopyKismetPropertyPointer(e.Variable, src, dst, fnSrc, fnDst),
                     };
                 }
+            case EX_DynamicCast e:
+                {
+                    return new EX_DynamicCast() {
+                        ClassPtr = CopyImportTo((src, e.ClassPtr), dst),
+                        TargetExpression = CopyExpressionTo(e.TargetExpression, src, dst, fnSrc, fnDst),
+                    };
+                }
+            case EX_PrimitiveCast e:
+                {
+                    return new EX_PrimitiveCast() {
+                        ConversionType = e.ConversionType,
+                        Target = CopyExpressionTo(e.Target, src, dst, fnSrc, fnDst),
+                    };
+                }
+            case EX_JumpIfNot e:
+                {
+                    return new EX_JumpIfNot() {
+                        CodeOffset = e.CodeOffset, // TODO wtf to do about jumps
+                        BooleanExpression = CopyExpressionTo(e.BooleanExpression, src, dst, fnSrc, fnDst),
+                    };
+                }
             default:
                 {
                     throw new NotImplementedException(exp.ToString());
