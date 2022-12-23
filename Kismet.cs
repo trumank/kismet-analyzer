@@ -617,6 +617,12 @@ public class Kismet {
                         Parameters = e.Parameters.Select(p => CopyExpressionTo(p, src, dst, fnSrc, fnDst)).ToArray(),
                     };
                 }
+            case EX_SkipOffsetConst e:
+                {
+                    return new EX_SkipOffsetConst() {
+                        Value = e.Value,
+                    };
+                }
             case EX_ByteConst e:
                 {
                     return new EX_ByteConst() {
@@ -717,6 +723,13 @@ public class Kismet {
                         Variable = CopyKismetPropertyPointer(e.Variable, src, dst, fnSrc, fnDst),
                     };
                 }
+            case EX_CallMath e:
+                {
+                    return new EX_CallMath() {
+                        StackNode = CopyImportTo((src, e.StackNode), dst),
+                        Parameters = e.Parameters.Select(p => CopyExpressionTo(p, src, dst, fnSrc, fnDst)).ToArray(),
+                    };
+                }
             case EX_FinalFunction e:
                 {
                     return new EX_FinalFunction() {
@@ -749,6 +762,7 @@ public class Kismet {
                     return new EX_StructConst() {
                         Struct = CopyImportTo((src, e.Struct), dst),
                         StructSize = e.StructSize,
+                        Value = e.Value.Select(p => CopyExpressionTo(p, src, dst, fnSrc, fnDst)).ToArray(),
                     };
                 }
             case EX_StructMemberContext e:
