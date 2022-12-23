@@ -135,6 +135,11 @@ Leading underscores can be used to work around special function names being ille
         makeModRemoveAllParticles.SetHandler(MakeModRemoveAllParticles, ueVersion);
         rootCommand.AddCommand(makeModRemoveAllParticles);
 
+        var getType = new Command("get-type", "Get asset type");
+        getType.Add(assetInputDirectory);
+        getType.SetHandler(GetType, ueVersion, assetInputDirectory);
+        rootCommand.AddCommand(getType);
+
         new CommandLineBuilder(rootCommand)
            .UseVersionOption()
            .UseHelp()
@@ -673,6 +678,35 @@ Leading underscores can be used to work around special function names being ille
 
         foreach (var ex in unmatched) {
             Console.Error.WriteLine($"WARNING: Exclusion {ex} did not have any matches");
+        }
+    }
+
+    static void GetType(EngineVersion ueVersion, string assetInputDirectory) {
+        var autoVerified = new HashSet<string> {
+            "SoundWave",
+            "SoundCue",
+            "SoundClass",
+            "SoundMix",
+            "MaterialInstanceConstant",
+            "Material",
+            "SkeletalMesh",
+            "StaticMesh",
+            "Texture2D",
+            "AnimSequence",
+            "Skeleton",
+            "StringTable",
+        };
+        foreach (var (type, autoVerify, asset) in GetAssets(assetInputDirectory).AsParallel().Select(assetPath => {
+            UAsset asset = new UAsset(assetPath, ueVersion);
+            var primary = asset.Exports.First(e => e.OuterIndex.IsNull());
+            var type = primary.ClassIndex.ToImport(asset).ObjectName.ToString();
+            return (
+                type,
+                autoVerified.Contains(type),
+                Path.GetRelativePath(assetInputDirectory, assetPath)
+            );
+        }).OrderBy(t => t.Item1)) {
+            Console.WriteLine($"{type},{autoVerify},{asset}");
         }
     }
 }
