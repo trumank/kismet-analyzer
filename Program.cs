@@ -4,6 +4,9 @@ using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Parsing;
 
+using System.Reflection;
+using System.Text;
+
 using UAssetAPI;
 using UAssetAPI.UnrealTypes;
 using UAssetAPI.ExportTypes;
@@ -172,6 +175,18 @@ Leading underscores can be used to work around special function names being ille
     }
     static void GenCfgTree(EngineVersion ueVersion, string assetInputDir, string output, string projectName) {
         Directory.CreateDirectory(output);
+
+        var assembly = Assembly.GetAssembly(typeof(Program));
+        var prefix = $"{assembly.GetName().Name.Replace("-", "_")}.viz.";
+        foreach (var resourceName in assembly.GetManifestResourceNames()) {
+            if (resourceName.StartsWith(prefix)) {
+                var fileName = resourceName.Substring(prefix.Length);
+
+                var outFile = File.Create(Path.Join(output, fileName));
+                assembly.GetManifestResourceStream(resourceName).CopyTo(outFile);
+            }
+        }
+
         var graph = new Graph("digraph");
         graph.GraphAttributes["rankdir"] = "LR";
 

@@ -1,0 +1,39 @@
+window, html, body {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+body {
+  overflow: scroll;
+}
+#minimap-container {
+  position: fixed;
+  top: 5vmin;
+  right: 5vmin;
+
+  outline: 2px solid black;
+}
+#minimap {
+  max-width: 30vmin;
+  max-height: 30vmin;
+
+  display: block;
+
+  pointer-events: none;
+}
+#minimap-view {
+  position: absolute;
+  box-sizing: border-box;
+  left: 0%;
+  top: 50%;
+
+  pointer-events: none;
+
+  outline: 2px solid black;
+}
+#map {
+  transform-origin: top left;
+}
+#container {
+  overflow: hidden;
+}

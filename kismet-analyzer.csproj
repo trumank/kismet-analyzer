@@ -12,7 +12,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="UAssetAPI\**" />
+    <Compile Remove="viz\**" />
     <Content Include="UAssetAPI\**" />
+  </ItemGroup>
+  <ItemGroup>
+     <EmbeddedResource Include="viz\**" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
