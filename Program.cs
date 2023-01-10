@@ -217,6 +217,7 @@ Leading underscores can be used to work around special function names being ille
 
                 var outFile = File.Create(Path.Join(output, fileName));
                 assembly.GetManifestResourceStream(resourceName).CopyTo(outFile);
+                outFile.Close();
             }
         }
 
