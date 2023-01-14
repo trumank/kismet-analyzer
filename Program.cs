@@ -133,6 +133,18 @@ public class Program {
         copyImports.SetHandler(CopyImports, ueVersion, assetSource, assetDestination, importIndexes);
         rootCommand.AddCommand(copyImports);
 
+        var spliceAsset = new Command("splice-asset","splice asset");
+        spliceAsset.Add(assetInput);
+        spliceAsset.Add(assetOutput);
+        spliceAsset.SetHandler(SpliceAsset, ueVersion, assetInput, assetOutput);
+        rootCommand.AddCommand(spliceAsset);
+
+        var spliceMissionTerminal = new Command("splice-mission-terminal","splice asset");
+        spliceMissionTerminal.Add(assetInput);
+        spliceMissionTerminal.Add(assetOutput);
+        spliceMissionTerminal.SetHandler(SpliceMissionTerminal, ueVersion, assetInput, assetOutput);
+        rootCommand.AddCommand(spliceMissionTerminal);
+
         var mergeFunctions = new Command("merge-functions",
 @"Merge functions from source asset to the start of functions with matching names in the destination asset.
 Leading underscores can be used to work around special function names being illegal in the editor.");
@@ -326,6 +338,16 @@ Leading underscores can be used to work around special function names being ille
         }
 
         to.Write(assetDestination);
+    }
+    static void SpliceAsset(EngineVersion ueVersion, string assetInput, string assetOutput) {
+        UAsset input = new UAsset(assetInput, ueVersion);
+        Kismet.SpliceAsset(input);
+        input.Write(assetOutput);
+    }
+    static void SpliceMissionTerminal(EngineVersion ueVersion, string assetInput, string assetOutput) {
+        UAsset input = new UAsset(assetInput, ueVersion);
+        Kismet.SpliceMissionTerminal(input);
+        input.Write(assetOutput);
     }
     static void MergeFunctions(EngineVersion ueVersion, string assetSource, string assetDestination) {
         UAsset source = new UAsset(assetSource, ueVersion);

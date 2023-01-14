@@ -820,10 +820,275 @@ public class Kismet {
                         BooleanExpression = CopyExpressionTo(e.BooleanExpression, src, dst, fnSrc, fnDst),
                     };
                 }
+            case EX_PopExecutionFlow e:
+                {
+                    return new EX_PopExecutionFlow();
+                }
             default:
                 {
                     throw new NotImplementedException(exp.ToString());
                 }
         }
+    }
+
+    public static IEnumerable<(uint, KismetExpression)> GetOffsets(KismetExpression[] bytecode) {
+        var offsets = new List<(uint, KismetExpression)>();
+        uint offset = 0;
+        foreach (var inst in bytecode) {
+            offsets.Add((offset, inst));
+            offset += Kismet.GetSize(inst);
+        }
+        return offsets;
+    }
+
+    public static void SpliceMissionTerminal(UAsset asset) {
+        foreach (var export in asset.Exports) {
+            if (export is FunctionExport ubergraph) {
+                if (!export.ObjectName.ToString().StartsWith("ExecuteUbergraph")) {
+                    continue;
+                }
+
+                Console.WriteLine("found ubergraph");
+
+                var offsets = GetOffsets(ubergraph.ScriptBytecode).ToDictionary(l => l.Item1, l => l.Item2);
+
+                var list = ubergraph.ScriptBytecode.ToList();
+
+                //list.RemoveAt(list.IndexOf(offsets[5179]));
+
+                list.Insert(list.IndexOf(offsets[5200]), new EX_Jump() {
+                    CodeOffset = 5339
+                });
+
+                list.Insert(list.IndexOf(offsets[5200]), new EX_StringConst() {
+                    Value = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                });
+
+                list.Remove(offsets[5200]);
+                list.Remove(offsets[5236]);
+                list.Remove(offsets[5257]);
+                list.Remove(offsets[5290]);
+
+
+                ubergraph.ScriptBytecode = list.ToArray();
+
+                var newOffsets = GetOffsets(ubergraph.ScriptBytecode).ToDictionary(l => l.Item2, l => l.Item1);
+
+                foreach (var inst in ubergraph.ScriptBytecode) {
+                    if (inst is EX_JumpIfNot jumpIfNot) {
+                        jumpIfNot.CodeOffset = newOffsets[offsets[jumpIfNot.CodeOffset]];
+                    } else if (inst is EX_Jump jump) {
+                        jump.CodeOffset = newOffsets[offsets[jump.CodeOffset]];
+                    } else if (inst is EX_PushExecutionFlow push) {
+                        push.PushingAddress = newOffsets[offsets[push.PushingAddress]];
+                    } else if (inst is EX_CallMath callMath) {
+                        foreach (var param in callMath.Parameters) {
+                            if (param is EX_StructConst sc && sc.Struct.IsImport() && sc.Struct.ToImport(asset).ObjectName.ToString() == "LatentActionInfo" && sc.Value[2] is EX_NameConst nc && nc.Value == ubergraph.ObjectName && sc.Value[0] is EX_SkipOffsetConst soc) {
+                                soc.Value = newOffsets[offsets[soc.Value]];
+                            }
+                        }
+                    }
+                }
+
+                // Fix events jumping into Ubergraph
+                foreach (var export2 in asset.Exports) {
+                    if (export2 is FunctionExport fn) {
+                        foreach (var inst in fn.ScriptBytecode) {
+                            if (inst is EX_LocalFinalFunction ug && ug.StackNode.IsExport() && ug.StackNode.ToExport(asset) == export) {
+                                if (ug.Parameters.Length == 1 && ug.Parameters[0] is EX_IntConst offset) {
+                                    offset.Value = (int) newOffsets[offsets[(uint) offset.Value]];
+                                } else {
+                                    Console.WriteLine("WARN: Expected EX_IntConst parameter");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public static void SpliceAsset(UAsset asset) {
+        var src = new UAsset("../../FSD/Saved/Cooked/LinuxNoEditor/FSD/Content/_AssemblyStorm/CustomDifficulty2/Hook_PLS_Base.uasset");
+        var srcFn = (FunctionExport) src.Exports.First(e => e is FunctionExport && e.ObjectName.ToString() == "PLS");
+
+        var srcUg = (FunctionExport) src.Exports.First(e => e is FunctionExport && e.ObjectName.ToString() == "ExecuteUbergraph_Hook_PLS_Base");
+        var srcOffsets = GetOffsets(srcUg.ScriptBytecode).ToDictionary(l => l.Item1, l => l.Item2);
+
+        var logFn = (EX_Context) srcFn.ScriptBytecode[0];
+
+        foreach (var export in asset.Exports) {
+            if (export is FunctionExport ubergraph) {
+                if (!export.ObjectName.ToString().StartsWith("ExecuteUbergraph")) {
+                    continue;
+                }
+
+                Console.WriteLine("found ubergraph");
+
+                var offsets = GetOffsets(ubergraph.ScriptBytecode).ToDictionary(l => l.Item1, l => l.Item2);
+
+
+                Func<string, KismetExpression> log = (msg) => {
+                    var exp = CopyExpressionTo(logFn, src, asset, srcFn, ubergraph);
+                    if (exp is EX_Context ctx && ctx.ContextExpression is EX_LocalVirtualFunction lvf) {
+                        if (lvf.Parameters[1] is EX_StringConst scMsg) scMsg.Value = msg;
+                        ctx.Offset = GetSize(ctx.ContextExpression);
+                    }
+                    return exp;
+                };
+
+                var list = ubergraph.ScriptBytecode.ToList();
+                //list.Insert(list.IndexOf(offsets[21994]), log("OnLoaded"));
+                //list.Insert(list.IndexOf(offsets[19085]), log("ReceiveBeginPlay"));
+                //list.Insert(list.IndexOf(offsets[9848]), log("before begin generation"));
+                //list.Insert(list.IndexOf(offsets[8643]), log("wait loop"));
+                list.Insert(list.IndexOf(offsets[14398]), log("before BeginGeneration"));
+                list.Insert(list.IndexOf(offsets[14408]), log("after BeginGeneration"));
+                list.Insert(list.IndexOf(offsets[15059]), log("before client return"));
+                list.Insert(list.IndexOf(offsets[15159]), log("before set random stream seed"));
+
+                //list.Remove(offsets[14958]); // remove `IsInitialized = true`
+
+
+                //client
+                var index = list.IndexOf(offsets[15348]);
+                var exp = log("wait loop client");
+                list.Insert(index++, exp);
+                offsets[15348] = exp;
+
+                list.Insert(index++, exp = CopyExpressionTo(srcOffsets[15], src, asset, srcUg, ubergraph));
+                offsets[100002] = exp;
+                list.Insert(index++, exp = CopyExpressionTo(srcOffsets[45], src, asset, srcUg, ubergraph));
+                list.Insert(index++, exp = CopyExpressionTo(srcOffsets[91], src, asset, srcUg, ubergraph));
+                ((EX_JumpIfNot) exp).CodeOffset = 100000;
+                offsets[100001] = exp;
+
+                list.Add(exp = CopyExpressionTo(srcOffsets[156], src, asset, srcUg, ubergraph));
+                offsets[100000] = exp;
+                Console.WriteLine(exp);
+                ((EX_SkipOffsetConst)((EX_StructConst) ((EX_CallMath) exp).Parameters[2]).Value[0]).Value = 100002;
+                ((EX_NameConst)((EX_StructConst) ((EX_CallMath) exp).Parameters[2]).Value[2]).Value = FName.FromString(asset, "ExecuteUbergraph_PLS_Base");
+                list.Add(exp = CopyExpressionTo(srcOffsets[210], src, asset, srcUg, ubergraph));
+
+
+                /*
+                //server
+                // doesn't work
+                //uint serverInst = 15069;
+
+                // works
+                //uint serverInst = 14398;
+                //uint serverInst = 14833;
+                uint serverInst = 15059;
+
+                index = list.IndexOf(offsets[serverInst]);
+                exp = log("wait loop server");
+                list.Insert(index++, exp);
+                offsets[serverInst] = exp;
+
+                list.Insert(index++, exp = CopyExpressionTo(srcOffsets[15], src, asset, srcUg, ubergraph));
+                offsets[100012] = exp;
+                list.Insert(index++, exp = CopyExpressionTo(srcOffsets[45], src, asset, srcUg, ubergraph));
+                list.Insert(index++, exp = CopyExpressionTo(srcOffsets[91], src, asset, srcUg, ubergraph));
+                ((EX_JumpIfNot) exp).CodeOffset = 100010;
+                offsets[100011] = exp;
+
+                list.Add(exp = CopyExpressionTo(srcOffsets[156], src, asset, srcUg, ubergraph));
+                offsets[100010] = exp;
+                Console.WriteLine(exp);
+                ((EX_SkipOffsetConst)((EX_StructConst) ((EX_CallMath) exp).Parameters[2]).Value[0]).Value = 100012;
+                ((EX_NameConst)((EX_StructConst) ((EX_CallMath) exp).Parameters[2]).Value[2]).Value = FName.FromString(asset, "ExecuteUbergraph_PLS_Base");
+                list.Add(exp = CopyExpressionTo(srcOffsets[210], src, asset, srcUg, ubergraph));
+                */
+
+                //list.Add(CopyExpressionTo(srcOffsets[210], src, asset, srcUg, ubergraph));
+
+                //ubergraph.ScriptBytecode = ubergraph.ScriptBytecode.Where(inst => {
+                    //return inst is EX_CallMath cm && cm.StackNode.IsImport() && cm.StackNode.ToImport(asset).ObjectName.ToString() == "PrintString";
+                //}).ToArray();
+                ubergraph.ScriptBytecode = list.ToArray();
+
+                var newOffsets = GetOffsets(ubergraph.ScriptBytecode).ToDictionary(l => l.Item2, l => l.Item1);
+
+                foreach (var inst in ubergraph.ScriptBytecode) {
+                    if (inst is EX_JumpIfNot jumpIfNot) {
+                        jumpIfNot.CodeOffset = newOffsets[offsets[jumpIfNot.CodeOffset]];
+                    } else if (inst is EX_Jump jump) {
+                        jump.CodeOffset = newOffsets[offsets[jump.CodeOffset]];
+                    } else if (inst is EX_PushExecutionFlow push) {
+                        push.PushingAddress = newOffsets[offsets[push.PushingAddress]];
+                    } else if (inst is EX_CallMath callMath) {
+                        foreach (var param in callMath.Parameters) {
+                            if (param is EX_StructConst sc && sc.Struct.IsImport() && sc.Struct.ToImport(asset).ObjectName.ToString() == "LatentActionInfo" && sc.Value[2] is EX_NameConst nc && nc.Value == ubergraph.ObjectName && sc.Value[0] is EX_SkipOffsetConst soc) {
+                                soc.Value = newOffsets[offsets[soc.Value]];
+                            }
+                        }
+                    }
+                }
+
+                // Fix events jumping into Ubergraph
+                foreach (var export2 in asset.Exports) {
+                    if (export2 is FunctionExport fn) {
+                        foreach (var inst in fn.ScriptBytecode) {
+                            if (inst is EX_LocalFinalFunction ug && ug.StackNode.IsExport() && ug.StackNode.ToExport(asset) == export) {
+                                if (ug.Parameters.Length == 1 && ug.Parameters[0] is EX_IntConst offset) {
+                                    offset.Value = (int) newOffsets[offsets[(uint) offset.Value]];
+                                } else {
+                                    Console.WriteLine("WARN: Expected EX_IntConst parameter");
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+        /*
+        foreach (var export in asset.Exports) {
+            if (export is FunctionExport fnSrc) {
+                if (export.ObjectName.ToString().StartsWith("ExecuteUbergraph")) {
+                    Console.Error.WriteLine("Ignoring ubergraph");
+                    continue;
+                }
+                var found = false;
+                foreach (var exportDest in asset.Exports) {
+                    if (exportDest is FunctionExport fnDest) {
+                        if (fnSrc.ObjectName.ToString().TrimStart('_') != fnDest.ObjectName.ToString().TrimStart('_')) continue;
+                        Console.WriteLine($"Found matching function named {export.ObjectName}");
+
+                        var newInst = new List<KismetExpression>();
+                        //for (int i = 0; i < fnSrc.ScriptBytecode.Length; i++) {
+                        var offset = 0;
+                        var keepReturn = false;
+                        foreach (var inst in fnSrc.ScriptBytecode) {
+                            if (inst is EX_Context c) {
+                                if (c.ContextExpression is EX_LocalVirtualFunction i) {
+                                    if (i.VirtualFunctionName.Value.ToString() == "RETURN") {
+                                        keepReturn = true;
+                                        continue; // TODO handle offset addresses in source function because now we're skipping expressions
+                                    }
+                                }
+                            }
+                            var isReturn = inst.GetType() == typeof(EX_Return);
+                            if (isReturn ? keepReturn : true) {
+                                offset += (int) Kismet.GetSize(inst);
+                                newInst.Add(Kismet.CopyExpressionTo(inst, source, dest, fnSrc, fnDest));
+                            }
+                            if (isReturn) break;
+                        }
+                        foreach (var inst in fnDest.ScriptBytecode) {
+                            Kismet.ShiftAddressses(inst, offset);
+                            newInst.Add(inst);
+                        }
+                        fnDest.ScriptBytecode = newInst.ToArray();
+
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) Console.Error.WriteLine($"Could not find matching function for {fnSrc.ObjectName} in dest asset");
+            }
+        }
+        */
     }
 }
