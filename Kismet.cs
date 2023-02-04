@@ -366,6 +366,8 @@ public class Kismet {
             case EX_Nothing:
             case EX_NoObject:
             case EX_EndOfScript:
+            case EX_Tracepoint:
+            case EX_WireTracepoint:
                 {
                     break;
                 }
@@ -823,6 +825,14 @@ public class Kismet {
             case EX_PopExecutionFlow e:
                 {
                     return new EX_PopExecutionFlow();
+                }
+            case EX_Tracepoint e:
+                {
+                    return new EX_Tracepoint();
+                }
+            case EX_WireTracepoint e:
+                {
+                    return new EX_WireTracepoint();
                 }
             default:
                 {

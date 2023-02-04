@@ -844,6 +844,18 @@ public class SummaryGenerator {
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
+            case EX_Tracepoint e:
+                {
+                    lines = new Lines("EX_" + e.Inst);
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
+            case EX_WireTracepoint e:
+                {
+                    lines = new Lines("EX_" + e.Inst);
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
             case EX_True:
             case EX_False:
             case EX_Nothing:
