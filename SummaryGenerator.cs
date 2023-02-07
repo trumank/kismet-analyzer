@@ -118,7 +118,7 @@ public class SummaryGenerator {
             classLines.Add(propLines);
 
             var classNode = new Node(classExport.ObjectName.ToString());
-            classNode.Attributes["label"] = LinesToLabel(classLines);
+            classNode.Attributes["label"] = $"{{{LinesToField(classLines)}}}";
             classNode.Attributes["shape"] = "record";
             classNode.Attributes["style"] = "filled";
             classNode.Attributes["fillcolor"] = "#88ff88";
@@ -148,7 +148,7 @@ public class SummaryGenerator {
                 }
 
                 var functionNode = new Node(functionName);
-                functionNode.Attributes["label"] = LinesToLabel(functionLines);
+                functionNode.Attributes["label"] = $"{{{LinesToField(functionLines)}}}";
                 functionNode.Attributes["shape"] = "record";
                 functionNode.Attributes["style"] = "filled";
                 functionNode.Attributes["fillcolor"] = "#ff8888";
@@ -159,6 +159,7 @@ public class SummaryGenerator {
                 Graph.Edges.Add(functionEdge);
 
                 uint index = 0;
+                Console.WriteLine(functionName);
                 foreach (var exp in e.ScriptBytecode) {
                     var intr = Stringify(exp, ref index);
                     foreach (var (nest, line) in intr.Content.GetLines()) {
@@ -167,7 +168,7 @@ public class SummaryGenerator {
                     }
 
                     var node = new Node($"{e.ObjectName.ToString()}__{intr.Address.ToString()}");
-                    node.Attributes["label"] = LinesToLabel(intr.Content);
+                    node.Attributes["label"] = $"{{{classExport.ObjectName.ToString()}::{e.ObjectName.ToString()}:{intr.Address.ToString()} | {LinesToField(intr.Content)}}}";
                     node.Attributes["shape"] = "record";
                     node.Attributes["style"] = "filled";
                     node.Attributes["fillcolor"] = "#eeeeee";
@@ -231,13 +232,11 @@ public class SummaryGenerator {
             .Replace("\"", "\\\"");
     }
 
-    public static string LinesToLabel(Lines lines) {
+    public static string LinesToField(Lines lines) {
         var label = new StringWriter();
-        label.Write("{");
         foreach (var (nest, line) in lines.GetLines()) {
             label.Write("".PadRight(nest * 2, '\u00A0') + SanitizeLabel(line) + "\\l");
         }
-        label.Write("}");
         return label.ToString();
     }
 
