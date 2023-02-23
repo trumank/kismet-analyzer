@@ -8,6 +8,195 @@ using UAssetAPI.Kismet.Bytecode;
 using UAssetAPI.Kismet.Bytecode.Expressions;
 
 public class Kismet {
+    public static void Walk(KismetExpression ex, Action<KismetExpression> func) {
+        uint offset = 0;
+        Walk(ref offset, ex, (ex, offset) => func(ex));
+    }
+    public static void Walk(ref uint offset, KismetExpression ex, Action<KismetExpression, uint> func) {
+        func(ex, offset);
+        offset++;
+        switch (ex) {
+            case EX_FieldPathConst e:
+                Walk(ref offset, e.Value, func);
+                break;
+            case EX_SoftObjectConst e:
+                Walk(ref offset, e.Value, func);
+                break;
+            case EX_AddMulticastDelegate e:
+                Walk(ref offset, e.Delegate, func);
+                Walk(ref offset, e.DelegateToAdd, func);
+                break;
+            case EX_ArrayConst e:
+                offset += 8;
+                foreach (var p in e.Elements) Walk(ref offset, p, func);
+                break;
+            case EX_ArrayGetByRef e:
+                Walk(ref offset, e.ArrayVariable, func);
+                Walk(ref offset, e.ArrayIndex, func);
+                break;
+            case EX_Assert e:
+                offset += 3;
+                Walk(ref offset, e.AssertExpression, func);
+                break;
+            case EX_BindDelegate e:
+                offset += 12;
+                Walk(ref offset, e.Delegate, func);
+                Walk(ref offset, e.ObjectTerm, func);
+                break;
+            case EX_CallMath e:
+                offset += 8;
+                foreach (var p in e.Parameters) Walk(ref offset, p, func);
+                offset += 1;
+                break;
+            case EX_CallMulticastDelegate e:
+                offset += 8;
+                Walk(ref offset, e.Delegate, func);
+                foreach (var p in e.Parameters) Walk(ref offset, p, func);
+                offset += 1;
+                break;
+            case EX_ClearMulticastDelegate e:
+                Walk(ref offset, e.DelegateToClear, func);
+                break;
+            case EX_ComputedJump e:
+                Walk(ref offset, e.CodeOffsetExpression, func);
+                break;
+            case EX_Context e: // +EX_Context_FailSilent +EX_ClassContext
+                Walk(ref offset, e.ObjectExpression, func);
+                offset += 12;
+                Walk(ref offset, e.ContextExpression, func);
+                break;
+            case EX_CrossInterfaceCast e:
+                offset += 8;
+                Walk(ref offset, e.Target, func);
+                break;
+            case EX_DynamicCast e:
+                offset += 8;
+                Walk(ref offset, e.TargetExpression, func);
+                break;
+            case EX_FinalFunction e: // +EX_LocalFinalFunction
+                offset += 8;
+                foreach (var p in e.Parameters) Walk(ref offset, p, func);
+                offset += 1;
+                break;
+            case EX_InterfaceContext e:
+                Walk(ref offset, e.InterfaceValue, func);
+                break;
+            case EX_InterfaceToObjCast e:
+                offset += 8;
+                Walk(ref offset, e.Target, func);
+                break;
+            case EX_JumpIfNot e:
+                offset += 4;
+                Walk(ref offset, e.BooleanExpression, func);
+                break;
+            case EX_Let e:
+                offset += 8;
+                Walk(ref offset, e.Variable, func);
+                Walk(ref offset, e.Expression, func);
+                break;
+            case EX_LetBool e:
+                Walk(ref offset, e.VariableExpression, func);
+                Walk(ref offset, e.AssignmentExpression, func);
+                break;
+            case EX_LetDelegate e:
+                Walk(ref offset, e.VariableExpression, func);
+                Walk(ref offset, e.AssignmentExpression, func);
+                break;
+            case EX_LetMulticastDelegate e:
+                Walk(ref offset, e.VariableExpression, func);
+                Walk(ref offset, e.AssignmentExpression, func);
+                break;
+            case EX_LetObj e:
+                Walk(ref offset, e.VariableExpression, func);
+                Walk(ref offset, e.AssignmentExpression, func);
+                break;
+            case EX_LetValueOnPersistentFrame e:
+                offset += 8;
+                Walk(ref offset, e.AssignmentExpression, func);
+                break;
+            case EX_LetWeakObjPtr e:
+                Walk(ref offset, e.VariableExpression, func);
+                Walk(ref offset, e.AssignmentExpression, func);
+                break;
+            case EX_VirtualFunction e: // +EX_LocalVirtualFunction
+                offset += 12;
+                foreach (var p in e.Parameters) Walk(ref offset, p, func);
+                offset += 1;
+                break;
+            case EX_MapConst e:
+                offset += 20;
+                foreach (var p in e.Elements) Walk(ref offset, p, func);
+                break;
+            case EX_MetaCast e:
+                offset += 8;
+                Walk(ref offset, e.TargetExpression, func);
+                break;
+            case EX_ObjToInterfaceCast e:
+                offset += 8;
+                Walk(ref offset, e.Target, func);
+                break;
+            case EX_PopExecutionFlowIfNot e:
+                Walk(ref offset, e.BooleanExpression, func);
+                break;
+            case EX_PrimitiveCast e:
+                offset += 1;
+                Walk(ref offset, e.Target, func);
+                break;
+            case EX_RemoveMulticastDelegate e:
+                Walk(ref offset, e.Delegate, func);
+                Walk(ref offset, e.DelegateToAdd, func);
+                break;
+            case EX_Return e:
+                Walk(ref offset, e.ReturnExpression, func);
+                break;
+            case EX_SetArray e:
+                Walk(ref offset, e.AssigningProperty, func);
+                foreach (var p in e.Elements) Walk(ref offset, p, func);
+                offset += 1;
+                break;
+            case EX_SetConst e:
+                offset += 12;
+                foreach (var p in e.Elements) Walk(ref offset, p, func);
+                offset += 1;
+                break;
+            case EX_SetMap e:
+                Walk(ref offset, e.MapProperty, func);
+                offset += 4;
+                foreach (var p in e.Elements) Walk(ref offset, p, func);
+                break;
+            case EX_SetSet e:
+                Walk(ref offset, e.SetProperty, func);
+                offset += 4;
+                foreach (var p in e.Elements) Walk(ref offset, p, func);
+                break;
+            case EX_Skip e:
+                offset += 4;
+                Walk(ref offset, e.SkipExpression, func);
+                break;
+            case EX_StructConst e:
+                offset += 12;
+                foreach (var p in e.Value) Walk(ref offset, p, func);
+                offset += 1;
+                break;
+            case EX_StructMemberContext e:
+                offset += 8;
+                Walk(ref offset, e.StructExpression, func);
+                break;
+            case EX_SwitchValue e:
+                offset += 6;
+                Walk(ref offset, e.IndexTerm, func);
+                foreach (var p in e.Cases) {
+                    Walk(ref offset, p.CaseIndexValueTerm, func);
+                    offset += 4;
+                    Walk(ref offset, p.CaseTerm, func);
+                }
+                Walk(ref offset, e.DefaultTerm, func);
+                break;
+            default:
+                offset += GetSize(ex) - 1;
+                break;
+        }
+    }
     public static uint GetSize(KismetExpression exp) {
         uint index = 1;
         switch (exp) {

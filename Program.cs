@@ -50,6 +50,9 @@ public class Program {
         var jsonOutput = new Argument<string>
             (name: "output",
             description: "Path to JSON output");
+        var jsonInput = new Argument<string>
+            (name: "input",
+            description: "Path to JSON input");
         var jsonOutputDiretory = new Argument<string>
             (name: "output",
             description: "Path to JSON output directory");
@@ -172,6 +175,19 @@ Leading underscores can be used to work around special function names being ille
         getType.Add(assetInputDirectory);
         getType.SetHandler(GetType, ueVersion, assetInputDirectory);
         rootCommand.AddCommand(getType);
+
+        var akExport = new Command("abstract-kismet-export", "Export abstract kismet");
+        akExport.Add(assetInput);
+        akExport.Add(jsonOutput);
+        akExport.SetHandler(AbstractKismet.AbstractKismet.Export, ueVersion, assetInput, jsonOutput);
+        rootCommand.AddCommand(akExport);
+
+        var akImport = new Command("abstract-kismet-import", "Import abstract kismet");
+        akImport.Add(assetInput);
+        akImport.Add(assetOutput);
+        akImport.Add(jsonInput);
+        akImport.SetHandler(AbstractKismet.AbstractKismet.Import, ueVersion, assetInput, assetOutput, jsonInput);
+        rootCommand.AddCommand(akImport);
 
         new CommandLineBuilder(rootCommand)
            .UseVersionOption()
