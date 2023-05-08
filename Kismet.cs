@@ -4,6 +4,7 @@ using UAssetAPI;
 using UAssetAPI.UnrealTypes;
 using UAssetAPI.ExportTypes;
 using UAssetAPI.FieldTypes;
+using UAssetAPI.PropertyTypes.Objects;
 using UAssetAPI.Kismet.Bytecode;
 using UAssetAPI.Kismet.Bytecode.Expressions;
 
@@ -610,6 +611,7 @@ public class Kismet {
     }
     public static FPackageIndex? CopyImportTo((UAsset, FPackageIndex?) import, UAsset asset) {
         if (import.Item2 == null) return null;
+        if (import.Item2.IsNull()) return import.Item2;
         for (int i = 0; i < asset.Imports.Count; i++) {
             var existing = FPackageIndex.FromImport(i);
             if (AreImportsEqual(import, (asset, existing))) return existing;
@@ -739,6 +741,55 @@ public class Kismet {
         }
         throw new NotImplementedException($"FProperty {prop} not implemented");
     }
+    public static UProperty CopyUProperty(UProperty prop, UAsset src, UAsset dst) {
+        switch (prop) {
+            case UObjectProperty p:
+                return new UObjectProperty() {
+                    // UField
+                    Next = null,
+
+                    // UProperty
+                    ArrayDim = p.ArrayDim,
+                    ElementSize = p.ElementSize,
+                    PropertyFlags = p.PropertyFlags,
+                    RepNotifyFunc = p.RepNotifyFunc.Transfer(dst),
+                    BlueprintReplicationCondition = p.BlueprintReplicationCondition,
+                    RawValue = p.RawValue,
+
+                    // UObjectProperty
+                    PropertyClass = CopyImportTo((src, p.PropertyClass), dst),
+                };
+            case UStructProperty p:
+                return new UStructProperty() {
+                    // UField
+                    Next = null,
+
+                    // UProperty
+                    ArrayDim = p.ArrayDim,
+                    ElementSize = p.ElementSize,
+                    PropertyFlags = p.PropertyFlags,
+                    RepNotifyFunc = p.RepNotifyFunc.Transfer(dst),
+                    BlueprintReplicationCondition = p.BlueprintReplicationCondition,
+                    RawValue = p.RawValue,
+
+                    // UStructProperty
+                    Struct = CopyImportTo((src, p.Struct), dst),
+                };
+        }
+        throw new NotImplementedException($"UProperty {prop} not implemented");
+    }
+    public static List<FPackageIndex> GetDependencies(UProperty prop) {
+        var dependencies = new List<FPackageIndex>();
+        switch (prop) {
+            case UObjectProperty p:
+                dependencies.Add(p.PropertyClass);
+                break;
+            case UStructProperty p:
+                dependencies.Add(p.Struct);
+                break;
+        }
+        return dependencies;
+    }
     public static FFieldPath? CopyFieldPath(FFieldPath? p, UAsset src, UAsset dst, FunctionExport fnSrc, FunctionExport fnDst) {
         if (p == null) return null;
         if (p.ResolvedOwner.IsNull()) {
@@ -771,9 +822,64 @@ public class Kismet {
         }
         throw new NotImplementedException("FFieldPath points to an export that is not the source function");
     }
+    public static FPackageIndex CopyPropertyExport(FPackageIndex p, UAsset src, UAsset dst, FunctionExport fnSrc, FunctionExport fnDst) {
+        if (p.ToExport(src) is PropertyExport property) {
+            var fnPiSrc = FPackageIndex.FromExport(src.Exports.IndexOf(fnSrc)); // TODO avoid IndexOf
+            var fnPiDst = FPackageIndex.FromExport(dst.Exports.IndexOf(fnDst)); // TODO avoid IndexOf
+
+            var existing = dst.Exports.FindIndex(e => e is PropertyExport && e.OuterIndex.Equals(fnPiDst) && e.ObjectName.ToString() == property.ObjectName.ToString());
+            if (existing != -1) {
+                return FPackageIndex.FromExport(existing);
+            }
+
+            var uprop = CopyUProperty(property.Property, src, dst);
+            var newProperty = new PropertyExport() {
+                //PropertyExport
+                Property = uprop,
+
+                //NormalExport
+                Data = new List<PropertyData>(), // TODO?
+
+                //Export
+                ClassIndex = CopyImportTo((src, property.ClassIndex), dst),
+                SuperIndex = CopyImportTo((src, property.SuperIndex), dst),
+                TemplateIndex = CopyImportTo((src, property.TemplateIndex), dst),
+                ObjectFlags = property.ObjectFlags,
+                bForcedExport = property.bForcedExport,
+                bNotForClient = property.bNotForClient,
+                bNotForServer = property.bNotForServer,
+                PackageGuid = property.PackageGuid,
+                PackageFlags = property.PackageFlags,
+                bNotAlwaysLoadedForEditorGame = property.bNotAlwaysLoadedForEditorGame,
+                bIsAsset = property.bIsAsset,
+                SerializationBeforeSerializationDependencies = new List<FPackageIndex>(),
+                CreateBeforeSerializationDependencies = GetDependencies(uprop),
+                SerializationBeforeCreateDependencies = new List<FPackageIndex>(),
+                CreateBeforeCreateDependencies = new List<FPackageIndex>() {fnPiDst},
+                Asset = dst,
+
+                //FObjectResource
+                ObjectName = property.ObjectName.Transfer(dst),
+                OuterIndex = fnPiDst, // TODO don't assume this is owned by the function
+
+                //Export
+                Extras = property.Extras,
+            };
+
+            dst.Exports.Add(newProperty);
+
+            var pi = FPackageIndex.FromExport(dst.Exports.Count - 1);
+            fnDst.Children = fnDst.Children.Append(pi).ToArray();
+            fnDst.SerializationBeforeSerializationDependencies.Add(pi);
+
+            return pi;
+        } else {
+            throw new NotImplementedException("expected PropertyExport");
+        }
+    }
     public static KismetPropertyPointer CopyKismetPropertyPointer(KismetPropertyPointer p, UAsset src, UAsset dst, FunctionExport fnSrc, FunctionExport fnDst) {
         return new KismetPropertyPointer() {
-            Old = CopyImportTo((src, p.Old), dst),
+            Old = CopyPropertyExport(p.Old, src, dst, fnSrc, fnDst),
             New = CopyFieldPath(p.New, src, dst, fnSrc, fnDst),
         };
     }
