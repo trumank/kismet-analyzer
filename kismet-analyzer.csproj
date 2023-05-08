@@ -15,8 +15,13 @@
     <Compile Remove="viz\**" />
     <Content Include="UAssetAPI\**" />
   </ItemGroup>
+  <Target Name="SetSourceRevisionId" BeforeTargets="InitializeSourceControlInformation">
+    <Exec Command="git describe --long --always --dirty --exclude=* --abbrev=8" ConsoleToMSBuild="True" IgnoreExitCode="False">
+      <Output PropertyName="SourceRevisionId" TaskParameter="ConsoleOutput"/>
+    </Exec>
+  </Target>
   <ItemGroup>
-     <EmbeddedResource Include="viz\**" />
+    <EmbeddedResource Include="viz\**" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Goblinfactory.Konsole" Version="6.2.2" />
