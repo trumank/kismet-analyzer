@@ -947,9 +947,7 @@ public class Kismet {
             case EX_RotationConst e:
                 {
                     return new EX_RotationConst() {
-                        Pitch = e.Pitch,
-                        Yaw = e.Yaw,
-                        Roll = e.Roll,
+                        Value = e.Value,
                     };
                 }
             case EX_StringConst e:

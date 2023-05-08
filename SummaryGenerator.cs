@@ -521,7 +521,7 @@ public class SummaryGenerator {
                 }
             case EX_RotationConst e:
                 {
-                    lines = new Lines(String.Format("EX_{0} {1},{2},{3}", e.Inst, e.Pitch, e.Yaw, e.Roll));
+                    lines = new Lines(String.Format("EX_{0} {1},{2},{3}", e.Inst, e.Value.Pitch, e.Value.Yaw, e.Value.Roll));
                     index += 12;
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
