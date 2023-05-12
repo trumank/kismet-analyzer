@@ -199,374 +199,76 @@ public class Kismet {
         }
     }
     public static uint GetSize(KismetExpression exp) {
-        uint index = 1;
-        switch (exp) {
-            case EX_PushExecutionFlow e:
+        return 1 + exp switch
+        {
+            EX_PushExecutionFlow => 4,
+            EX_ComputedJump e => GetSize(e.CodeOffsetExpression),
+            EX_Jump e => 4,
+            EX_JumpIfNot e => 4 + GetSize(e.BooleanExpression),
+            EX_LocalVariable e => 8,
+            EX_ObjToInterfaceCast e => 8 + GetSize(e.Target),
+            EX_Let e => 8 + GetSize(e.Variable) + GetSize(e.Expression),
+            EX_LetObj e => GetSize(e.VariableExpression) + GetSize(e.AssignmentExpression),
+            EX_LetBool e => GetSize(e.VariableExpression) + GetSize(e.AssignmentExpression),
+            EX_LetWeakObjPtr e => GetSize(e.VariableExpression) + GetSize(e.AssignmentExpression),
+            EX_LetValueOnPersistentFrame e => 8 + GetSize(e.AssignmentExpression),
+            EX_StructMemberContext e => 8 + GetSize(e.StructExpression),
+            EX_MetaCast e => 8 + GetSize(e.TargetExpression),
+            EX_DynamicCast e => 8 + GetSize(e.TargetExpression),
+            EX_PrimitiveCast e => 1 + e.ConversionType switch { ECastToken.ObjectToInterface => 8U, /* TODO InterfaceClass */ _ => throw new NotImplementedException()} + GetSize(e.Target),
+            EX_PopExecutionFlow e => 0,
+            EX_PopExecutionFlowIfNot e => GetSize(e.BooleanExpression),
+            EX_CallMath e => e.Parameters.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_SwitchValue e => 6 + GetSize(e.IndexTerm) + e.Cases.Select(c => GetSize(c.CaseIndexValueTerm) + 4 + GetSize(c.CaseTerm)).Aggregate(0U, (acc, x) => x + acc) + GetSize(e.DefaultTerm),
+            EX_Self => 0,
+            EX_TextConst e =>
+                1 + e.Value.TextLiteralType switch
                 {
-                    index += 4;
-                    break;
-                }
-            case EX_ComputedJump e:
-                {
-                    index += GetSize(e.CodeOffsetExpression);
-                    break;
-                }
-            case EX_Jump e:
-                {
-                    index += 4;
-                    break;
-                }
-            case EX_JumpIfNot e:
-                {
-                    index += 4;
-                    index += GetSize(e.BooleanExpression);
-                    break;
-                }
-            case EX_LocalVariable e:
-                {
-                    index += 8;
-                    break;
-                }
-            case EX_ObjToInterfaceCast e:
-                {
-                    index += 8;
-                    index += GetSize(e.Target);
-                    break;
-                }
-            case EX_Let e:
-                {
-                    index += 8;
-                    index += GetSize(e.Variable);
-                    index += GetSize(e.Expression);
-                    break;
-                }
-            case EX_LetObj e:
-                {
-                    index += GetSize(e.VariableExpression);
-                    index += GetSize(e.AssignmentExpression);
-                    break;
-                }
-            case EX_LetBool e:
-                {
-                    index += GetSize(e.VariableExpression);
-                    index += GetSize(e.AssignmentExpression);
-                    break;
-                }
-            case EX_LetWeakObjPtr e:
-                {
-                    index += GetSize(e.VariableExpression);
-                    index += GetSize(e.AssignmentExpression);
-                    break;
-                }
-            case EX_LetValueOnPersistentFrame e:
-                {
-                    index += 8;
-                    index += GetSize(e.AssignmentExpression);
-                    break;
-                }
-            case EX_StructMemberContext e:
-                {
-                    index += 8;
-                    index += GetSize(e.StructExpression);
-                    break;
-                }
-            case EX_MetaCast e:
-                {
-                    index += 8;
-                    index += GetSize(e.TargetExpression);
-                    break;
-                }
-            case EX_DynamicCast e:
-                {
-                    index += 8;
-                    index += GetSize(e.TargetExpression);
-                    break;
-                }
-            case EX_PrimitiveCast e:
-                {
-                    index++;
-                    switch (e.ConversionType) {
-                        case ECastToken.ObjectToInterface:
-                        {
-                            index += 8;
-                            // TODO InterfaceClass
-                            break;
-                        }
-                    }
-                    index += GetSize(e.Target);
-                    break;
-                }
-            case EX_PopExecutionFlow e:
-                {
-                    break;
-                }
-            case EX_PopExecutionFlowIfNot e:
-                {
-                    index += GetSize(e.BooleanExpression);
-                    break;
-                }
-            case EX_CallMath e:
-                {
-                    index += 8;
-                    foreach (var arg in e.Parameters) {
-                        index += GetSize(arg);
-                    }
-                    index++;
-                    break;
-                }
-            case EX_SwitchValue e:
-                {
-                    index += 6;
-                    index += GetSize(e.IndexTerm);
-                    foreach (var c in e.Cases) {
-                        index += GetSize(c.CaseIndexValueTerm);
-                        index += 4;
-                        index += GetSize(c.CaseTerm);
-                    }
-                    index += GetSize(e.DefaultTerm);
-                    break;
-                }
-            case EX_Self e:
-                {
-                    break;
-                }
-            case EX_TextConst e:
-                {
-                    index++;
-                    switch (e.Value.TextLiteralType) {
-                        case EBlueprintTextLiteralType.Empty:
-                            {
-                                break;
-                            }
-                        case EBlueprintTextLiteralType.LocalizedText:
-                            {
-                                index += GetSize(e.Value.LocalizedSource);
-                                index += GetSize(e.Value.LocalizedKey);
-                                index += GetSize(e.Value.LocalizedNamespace);
-                                break;
-                            }
-                        case EBlueprintTextLiteralType.InvariantText:
-                            {
-                                index += GetSize(e.Value.InvariantLiteralString);
-                                break;
-                            }
-                        case EBlueprintTextLiteralType.LiteralString:
-                            {
-                                index += GetSize(e.Value.LiteralString);
-                                break;
-                            }
-                        case EBlueprintTextLiteralType.StringTableEntry:
-                            {
-                                index += 8;
-                                index += GetSize(e.Value.StringTableId);
-                                index += GetSize(e.Value.StringTableKey);
-                                break;
-                            }
-                    }
-                    break;
-                }
-            case EX_ObjectConst e:
-                {
-                    index += 8;
-                    break;
-                }
-            case EX_VectorConst e:
-                {
-                    index += 12;
-                    break;
-                }
-            case EX_RotationConst e:
-                {
-                    index += 12;
-                    break;
-                }
-            case EX_TransformConst e:
-                {
-                    index += 40;
-                    break;
-                }
-            case EX_Context e:
-                {
-                    index += GetSize(e.ObjectExpression);
-                    index += 4;
-                    index += 8;
-                    index += GetSize(e.ContextExpression);
-                    break;
-                }
-            case EX_CallMulticastDelegate e:
-                {
-                    index += 8;
-                    index += GetSize(e.Delegate);
-                    foreach (var arg in e.Parameters) {
-                        index += GetSize(arg);
-                    }
-                    index++;
-                    break;
-                }
-            case EX_LocalFinalFunction e:
-                {
-                    index += 8;
-                    foreach (var arg in e.Parameters) {
-                        index += GetSize(arg);
-                    }
-                    index++;
-                    break;
-                }
-            case EX_FinalFunction e:
-                {
-                    index += 8;
-                    foreach (var arg in e.Parameters) {
-                        index += GetSize(arg);
-                    }
-                    index++;
-                    break;
-                }
-            case EX_LocalVirtualFunction e:
-                {
-                    index += 12;
-                    foreach (var arg in e.Parameters) {
-                        index += GetSize(arg);
-                    }
-                    index++;
-                    break;
-                }
-            case EX_VirtualFunction e:
-                {
-                    index += 12;
-                    foreach (var arg in e.Parameters) {
-                        index += GetSize(arg);
-                    }
-                    index++;
-                    break;
-                }
-            case EX_InstanceVariable e:
-                {
-                    index += 8;
-                    break;
-                }
-            case EX_AddMulticastDelegate e:
-                {
-                    index += GetSize(e.Delegate);
-                    index += GetSize(e.DelegateToAdd);
-                    break;
-                }
-            case EX_RemoveMulticastDelegate e:
-                {
-                    index += GetSize(e.Delegate);
-                    index += GetSize(e.DelegateToAdd);
-                    break;
-                }
-            case EX_ClearMulticastDelegate e:
-                {
-                    index += GetSize(e.DelegateToClear);
-                    break;
-                }
-            case EX_BindDelegate e:
-                {
-                    index += 12;
-                    index += GetSize(e.Delegate);
-                    index += GetSize(e.ObjectTerm);
-                    break;
-                }
-            case EX_StructConst e:
-                {
-                    index += 8;
-                    index += 4;
-                    foreach (var arg in e.Value) {
-                        index += GetSize(arg);
-                    }
-                    index++;
-                    break;
-                }
-            case EX_SetArray e:
-                {
-                    index += GetSize(e.AssigningProperty);
-                    foreach (var arg in e.Elements) {
-                        index += GetSize(arg);
-                    }
-                    index++;
-                    break;
-                }
-            case EX_SoftObjectConst e:
-                {
-                    index += GetSize(e.Value);
-                    break;
-                }
-            case EX_ByteConst e:
-                {
-                    index++;
-                    break;
-                }
-            case EX_IntConst e:
-                {
-                    index += 4;
-                    break;
-                }
-            case EX_FloatConst e:
-                {
-                    index += 4;
-                    break;
-                }
-            case EX_NameConst e:
-                {
-                    index += 12;
-                    break;
-                }
-            case EX_StringConst e:
-                {
-                    index += (uint) (e.Value.Length + 1);
-                    break;
-                }
-            case EX_SkipOffsetConst e:
-                {
-                    index += 4;
-                    break;
-                }
-            case EX_ArrayConst e:
-                {
-                    index += 13;
-                    foreach (var arg in e.Elements) {
-                        index += GetSize(arg);
-                    }
-                    break;
-                }
-            case EX_Return e:
-                {
-                    index += GetSize(e.ReturnExpression);
-                    break;
-                }
-            case EX_LocalOutVariable e:
-                {
-                    index += 8;
-                    break;
-                }
-            case EX_InterfaceContext e:
-                {
-                    index += GetSize(e.InterfaceValue);
-                    break;
-                }
-            case EX_ArrayGetByRef e:
-                {
-                    index += GetSize(e.ArrayVariable);
-                    index += GetSize(e.ArrayIndex);
-                    break;
-                }
-            case EX_True:
-            case EX_False:
-            case EX_Nothing:
-            case EX_NoObject:
-            case EX_EndOfScript:
-            case EX_Tracepoint:
-            case EX_WireTracepoint:
-                {
-                    break;
-                }
-            default:
-                {
-                    throw new NotImplementedException(exp.ToString());
-                }
-        }
-        return index;
+                    EBlueprintTextLiteralType.Empty => 0,
+                    EBlueprintTextLiteralType.LocalizedText => GetSize(e.Value.LocalizedSource) + GetSize(e.Value.LocalizedKey) + GetSize(e.Value.LocalizedNamespace),
+                    EBlueprintTextLiteralType.InvariantText => GetSize(e.Value.InvariantLiteralString),
+                    EBlueprintTextLiteralType.LiteralString => GetSize(e.Value.LiteralString),
+                    EBlueprintTextLiteralType.StringTableEntry => 8 + GetSize(e.Value.StringTableId) + GetSize(e.Value.StringTableKey),
+                    _ => throw new NotImplementedException(),
+                },
+            EX_ObjectConst e => 8,
+            EX_VectorConst e => 12,
+            EX_RotationConst e => 12,
+            EX_TransformConst e => 40,
+            EX_Context e => + GetSize(e.ObjectExpression) + 4 + 8 + GetSize(e.ContextExpression),
+            EX_CallMulticastDelegate e => 8 + GetSize(e.Delegate) + e.Parameters.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_LocalFinalFunction e => 8 + e.Parameters.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_FinalFunction e => 8 + e.Parameters.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_LocalVirtualFunction e => 12 + e.Parameters.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_VirtualFunction e => 12 + e.Parameters.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_InstanceVariable e => 8,
+            EX_AddMulticastDelegate e => GetSize(e.Delegate) + GetSize(e.DelegateToAdd),
+            EX_RemoveMulticastDelegate e => GetSize(e.Delegate) + GetSize(e.DelegateToAdd),
+            EX_ClearMulticastDelegate e => GetSize(e.DelegateToClear),
+            EX_BindDelegate e => 12 + GetSize(e.Delegate) + GetSize(e.ObjectTerm),
+            EX_StructConst e => 8 + 4 + e.Value.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_SetArray e => GetSize(e.AssigningProperty) + e.Elements.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_SoftObjectConst e => GetSize(e.Value),
+            EX_ByteConst e => 1,
+            EX_IntConst e => 4,
+            EX_FloatConst e => 4,
+            EX_NameConst e => 12,
+            EX_StringConst e => (uint) e.Value.Length + 1,
+            EX_SkipOffsetConst e => 4,
+            EX_ArrayConst e => 12 + e.Elements.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_Return e => GetSize(e.ReturnExpression),
+            EX_LocalOutVariable e => 8,
+            EX_InterfaceContext e => GetSize(e.InterfaceValue),
+            EX_ArrayGetByRef e => GetSize(e.ArrayVariable) + GetSize(e.ArrayIndex),
+            EX_True e => 0,
+            EX_False e => 0,
+            EX_Nothing e => 0,
+            EX_NoObject e => 0,
+            EX_EndOfScript e => 0,
+            EX_Tracepoint e => 0,
+            EX_WireTracepoint e => 0,
+            _ => throw new NotImplementedException(exp.ToString()),
+        };
     }
 
     public static void ShiftAddressses(KismetExpression exp, int offset) {
