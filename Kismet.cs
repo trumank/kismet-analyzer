@@ -531,7 +531,8 @@ public class Kismet {
         }
         throw new NotImplementedException("FFieldPath points to an export that is not the source function");
     }
-    public static FPackageIndex CopyPropertyExport(FPackageIndex p, UAsset src, UAsset dst, FunctionExport fnSrc, FunctionExport fnDst) {
+    public static FPackageIndex? CopyPropertyExport(FPackageIndex p, UAsset src, UAsset dst, FunctionExport fnSrc, FunctionExport fnDst) {
+        if (p == null) return null;
         if (p.ToExport(src) is PropertyExport property) {
             var fnPiSrc = FPackageIndex.FromExport(src.Exports.IndexOf(fnSrc)); // TODO avoid IndexOf
             var fnPiDst = FPackageIndex.FromExport(dst.Exports.IndexOf(fnDst)); // TODO avoid IndexOf
