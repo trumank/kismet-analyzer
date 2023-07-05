@@ -193,6 +193,31 @@ public class Kismet {
                 }
                 Walk(ref offset, e.DefaultTerm, func);
                 break;
+            case EX_TextConst e:
+                offset += 1;
+                switch (e.Value.TextLiteralType) {
+                    case EBlueprintTextLiteralType.Empty:
+                        break;
+                    case EBlueprintTextLiteralType.LocalizedText:
+                        Walk(ref offset, e.Value.LocalizedSource, func);
+                        Walk(ref offset, e.Value.LocalizedKey, func);
+                        Walk(ref offset, e.Value.LocalizedNamespace, func);
+                        break;
+                    case EBlueprintTextLiteralType.InvariantText:
+                        Walk(ref offset, e.Value.InvariantLiteralString, func);
+                        break;
+                    case EBlueprintTextLiteralType.LiteralString:
+                        Walk(ref offset, e.Value.LiteralString, func);
+                        break;
+                    case EBlueprintTextLiteralType.StringTableEntry:
+                        offset += 8;
+                        Walk(ref offset, e.Value.StringTableId, func);
+                        Walk(ref offset, e.Value.StringTableKey, func);
+                        break;
+                    default:
+                        throw new NotImplementedException();
+                };
+                break;
             default:
                 offset += GetSize(ex) - 1;
                 break;
