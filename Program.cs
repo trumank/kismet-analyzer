@@ -4,6 +4,8 @@ using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Parsing;
 
+using System;
+using System.Text;
 using System.Reflection;
 using System.Diagnostics;
 
@@ -18,6 +20,7 @@ using UAssetAPI.Kismet.Bytecode.Expressions;
 using Dot;
 
 using Konsole;
+using System.Runtime.InteropServices;
 
 public class Program {
     static int Main(string[] args) {
@@ -84,6 +87,12 @@ public class Program {
         ueVersion.AddAlias("-ue");
 
         rootCommand.AddGlobalOption(ueVersion);
+
+        var cfg = new Command("cfg", "Generate control flow graphs of single asset and open in a web browser");
+        cfg.Add(assetInput);
+        cfg.Add(dotPath);
+        cfg.SetHandler(Cfg, ueVersion, assetInput, dotPath);
+        rootCommand.AddCommand(cfg);
 
         var genCfg = new Command("gen-cfg", "Generate control flow graphs of single asset");
         genCfg.Add(assetInput);
@@ -210,6 +219,39 @@ Leading underscores can be used to work around special function names being ille
         enumOptions.RecurseSubdirectories = true;
         return new[] { "*.uasset", "*.umap" }.SelectMany(pattern => Directory.EnumerateFiles(directory, pattern, enumOptions));
     }
+    static void Cfg(EngineVersion ueVersion, string assetPath, string? dotPath) {
+        UAsset asset = new UAsset(assetPath, ueVersion);
+        string outputPath = Path.Join(System.IO.Path.GetTempPath(), $"{Path.GetFileNameWithoutExtension(assetPath)}-{Guid.NewGuid().ToString()}.html");
+
+        ProcessStartInfo info = new ProcessStartInfo(dotPath ?? "dot");
+        info.RedirectStandardInput = true;
+        info.RedirectStandardOutput = true;
+        info.ArgumentList.Add("-Tsvg");
+        //info.ArgumentList.Add("-o");
+        //info.ArgumentList.Add(outputPath);
+        var p = Process.Start(info) ?? throw new Exception("Process null");
+
+        p.Start();
+
+        new SummaryGenerator(asset, StreamWriter.Null, p.StandardInput).Summarize();
+        p.StandardInput.Close();
+
+        var svgData = p.StandardOutput.ReadToEnd();
+
+        p.WaitForExit();
+
+        var assembly = Assembly.GetAssembly(typeof(Program));
+        var resourceName = $"{assembly.GetName().Name.Replace("-", "_")}.viz.embed.html";
+        var template = new StreamReader(assembly.GetManifestResourceStream(resourceName)).ReadToEnd();
+        var html = template.Replace("[DATA]", Convert.ToBase64String(Encoding.UTF8.GetBytes(svgData)));
+
+        Console.WriteLine($"writing to {outputPath}");
+        using(StreamWriter writetext = new StreamWriter(outputPath)) {
+            writetext.Write(html);
+        }
+
+        OpenUrl(outputPath);
+    }
     static void GenCfg(EngineVersion ueVersion, string assetPath, string outputDir) {
         UAsset asset = new UAsset(assetPath, ueVersion);
         var fileName = Path.GetFileName(assetPath);
@@ -238,7 +280,7 @@ Leading underscores can be used to work around special function names being ille
         Directory.CreateDirectory(output);
 
         var assembly = Assembly.GetAssembly(typeof(Program));
-        var prefix = $"{assembly.GetName().Name.Replace("-", "_")}.viz.";
+        var prefix = $"{assembly.GetName().Name.Replace("-", "_")}.viz.index.";
         foreach (var resourceName in assembly.GetManifestResourceNames()) {
             if (resourceName.StartsWith(prefix)) {
                 var fileName = resourceName.Substring(prefix.Length);
@@ -833,6 +875,23 @@ Leading underscores can be used to work around special function names being ille
             );
         }).OrderBy(t => t.Item1)) {
             Console.WriteLine($"{type},{autoVerify},{asset}");
+        }
+    }
+
+    // https://stackoverflow.com/a/43232486
+    static void OpenUrl(string url) {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            url = url.Replace("&", "^&");
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            Process.Start("xdg-open", url);
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            Process.Start("open", url);
         }
     }
 }
