@@ -62,7 +62,11 @@ public class AbstractKismetBuilder {
     }
 
     public string FromKismetPropertyPointer(KismetPropertyPointer pointer) {
-        return $"{FromPackageIndex(pointer.New.ResolvedOwner)}[{String.Join(",", pointer.New.Path.Select(p => p.ToString().Replace(",", "\\,")))}]";
+        if (Asset.ObjectVersion >= KismetPropertyPointer.XFER_PROP_POINTER_SWITCH_TO_SERIALIZING_AS_FIELD_PATH_VERSION) {
+            return $"{FromPackageIndex(pointer.New.ResolvedOwner)}[{String.Join(",", pointer.New.Path.Select(p => p.ToString().Replace(",", "\\,")))}]";
+        } else {
+            return FromPackageIndex(pointer.Old);
+        }
     }
     public string FromPackageIndex(FPackageIndex package) {
         return $"PackageIndex({(package == null ? "null" : package.Index)})";
@@ -355,13 +359,17 @@ public class KismetBuilder {
 
     static Regex RxKismetPropertyPointer = new Regex(@"^PackageIndex\((-?\d+)\)\[(.*)\]$", RegexOptions.Compiled);
     public KismetPropertyPointer ToKismetPropertyPointer(String pointer) {
-        var match = RxKismetPropertyPointer.Match(pointer);
+        if (Asset.ObjectVersion >= KismetPropertyPointer.XFER_PROP_POINTER_SWITCH_TO_SERIALIZING_AS_FIELD_PATH_VERSION) {
+            var match = RxKismetPropertyPointer.Match(pointer);
 
-        var owner = FPackageIndex.FromRawIndex(Int32.Parse(match.Groups[1].Value));
-        // TODO handle backslash escaped ,
-        var path = match.Groups[2].Value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(n => ToFName(n)).ToArray();
+            var owner = FPackageIndex.FromRawIndex(Int32.Parse(match.Groups[1].Value));
+            // TODO handle backslash escaped ,
+            var path = match.Groups[2].Value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(n => ToFName(n)).ToArray();
 
-        return new KismetPropertyPointer(new FFieldPath(path, owner));
+            return new KismetPropertyPointer(new FFieldPath(path, owner));
+        } else {
+            return new KismetPropertyPointer(ToPackageIndex(pointer));
+        }
     }
 
     public void ResolveLabel(string label, Action<uint> cb) {
@@ -1550,12 +1558,14 @@ public class AEX_SoftObjectConst : AbstractKismetExpression {
 }
 public class AEX_StringConst : AbstractKismetExpression {
     public AEX_StringConst() {}
+    public string Value { get; set; } = null!;
+
     public AEX_StringConst(AbstractKismetBuilder ab, FunctionExport fn, EX_StringConst e) {
-        throw new NotImplementedException("EX_StringConst");
+        Value = e.Value;
     }
     public override KismetExpression ToKismetExpression(KismetBuilder b) {
-        throw new NotImplementedException("EX_StringConst");
         return new EX_StringConst() {
+            Value = Value,
         };
     }
 }
