@@ -613,6 +613,15 @@ public class SummaryGenerator {
                         lines.Add(Stringify(arg, ref index, referencedAddresses));
                     }
                     index++;
+
+                    if (e.Parameters.Length == 1 && e.Parameters[0] is EX_IntConst value) {
+                        if (Asset.Exports.Any(ex => ex is FunctionExport && ex.ObjectName.ToString() == e.VirtualFunctionName.ToString())) {
+                            referencedAddresses.Add(new Reference((uint) value.Value, ReferenceType.Function, e.VirtualFunctionName.ToString()));
+                        }
+                    } else {
+                        Console.Error.WriteLine("WARN: Unimplemented non-EX_IntConst");
+                    }
+
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
