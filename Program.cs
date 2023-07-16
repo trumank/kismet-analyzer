@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Diagnostics;
 
 using UAssetAPI;
+using UAssetAPI.Unversioned;
 using UAssetAPI.UnrealTypes;
 using UAssetAPI.ExportTypes;
 using UAssetAPI.PropertyTypes.Objects;
@@ -84,20 +85,24 @@ public class Program {
             (name: "--ue-version",
              description: "Unreal Engine version",
              getDefaultValue: () => EngineVersion.VER_UE4_27);
-        ueVersion.AddAlias("-ue");
+        var mappings = new Option<string>
+            (name: "--mappings",
+             description: "Path to .usmap for assets using unversioned properties");
+        mappings.AddAlias("-m");
 
         rootCommand.AddGlobalOption(ueVersion);
+        rootCommand.AddGlobalOption(mappings);
 
         var cfg = new Command("cfg", "Generate control flow graphs of single asset and open in a web browser");
         cfg.Add(assetInput);
         cfg.Add(dotPath);
-        cfg.SetHandler(Cfg, ueVersion, assetInput, dotPath);
+        cfg.SetHandler(Cfg, ueVersion, mappings, assetInput, dotPath);
         rootCommand.AddCommand(cfg);
 
         var genCfg = new Command("gen-cfg", "Generate control flow graphs of single asset");
         genCfg.Add(assetInput);
         genCfg.Add(cfgOutputDiretory);
-        genCfg.SetHandler(GenCfg, ueVersion, assetInput, cfgOutputDiretory);
+        genCfg.SetHandler(GenCfg, ueVersion, mappings, assetInput, cfgOutputDiretory);
         rootCommand.AddCommand(genCfg);
 
         var genCfgTree = new Command("gen-cfg-tree", "Generate control flow graphs of assets");
@@ -107,54 +112,54 @@ public class Program {
         genCfgTree.Add(renderDot);
         genCfgTree.Add(dotPath);
         genCfgTree.Add(showProgress);
-        genCfgTree.SetHandler(GenCfgTree, ueVersion, assetInputDirectory, cfgOutputDiretory, projectName, renderDot, dotPath, showProgress);
+        genCfgTree.SetHandler(GenCfgTree, ueVersion, mappings, assetInputDirectory, cfgOutputDiretory, projectName, renderDot, dotPath, showProgress);
         rootCommand.AddCommand(genCfgTree);
 
         var genJsonTree = new Command("gen-json-tree", "Generate JSON representation of assets");
         genJsonTree.Add(assetInputDirectory);
         genJsonTree.Add(jsonOutputDiretory);
-        genJsonTree.SetHandler(GenJsonTree, ueVersion, assetInputDirectory, jsonOutputDiretory);
+        genJsonTree.SetHandler(GenJsonTree, ueVersion, mappings, assetInputDirectory, jsonOutputDiretory);
         rootCommand.AddCommand(genJsonTree);
 
         var toJson = new Command("to-json", "Convert binary asset to JSON");
         toJson.Add(assetInput);
-        toJson.SetHandler(ToJson, ueVersion, assetInput);
+        toJson.SetHandler(ToJson, ueVersion, mappings, assetInput);
         rootCommand.AddCommand(toJson);
 
         var read = new Command("read", "Read asset into memory");
         read.Add(assetInput);
-        read.SetHandler(Read, ueVersion, assetInput);
+        read.SetHandler(Read, ueVersion, mappings, assetInput);
         rootCommand.AddCommand(read);
 
         var fromJson = new Command("from-json", "Convert JSON to binary asset");
         fromJson.Add(assetOutput);
-        fromJson.SetHandler(FromJson, ueVersion, assetOutput);
+        fromJson.SetHandler(FromJson, ueVersion, mappings, assetOutput);
         rootCommand.AddCommand(fromJson);
 
         var genBlueprint = new Command("gen-blueprint", "Generate blueprint asset");
         genBlueprint.Add(contextPath);
         genBlueprint.Add(assetSource);
         genBlueprint.Add(assetDestination);
-        genBlueprint.SetHandler(GenBlueprint, ueVersion, contextPath, assetSource, assetDestination);
+        genBlueprint.SetHandler(GenBlueprint, ueVersion, mappings, contextPath, assetSource, assetDestination);
         rootCommand.AddCommand(genBlueprint);
 
         var copyImports = new Command("copy-imports", "Copies imports from one asset to another and returns the new import indexes");
         copyImports.Add(assetSource);
         copyImports.Add(assetDestination);
         copyImports.Add(importIndexes);
-        copyImports.SetHandler(CopyImports, ueVersion, assetSource, assetDestination, importIndexes);
+        copyImports.SetHandler(CopyImports, ueVersion, mappings, assetSource, assetDestination, importIndexes);
         rootCommand.AddCommand(copyImports);
 
         var spliceAsset = new Command("splice-asset","splice asset");
         spliceAsset.Add(assetInput);
         spliceAsset.Add(assetOutput);
-        spliceAsset.SetHandler(SpliceAsset, ueVersion, assetInput, assetOutput);
+        spliceAsset.SetHandler(SpliceAsset, ueVersion, mappings, assetInput, assetOutput);
         rootCommand.AddCommand(spliceAsset);
 
         var spliceMissionTerminal = new Command("splice-mission-terminal","splice asset");
         spliceMissionTerminal.Add(assetInput);
         spliceMissionTerminal.Add(assetOutput);
-        spliceMissionTerminal.SetHandler(SpliceMissionTerminal, ueVersion, assetInput, assetOutput);
+        spliceMissionTerminal.SetHandler(SpliceMissionTerminal, ueVersion, mappings, assetInput, assetOutput);
         rootCommand.AddCommand(spliceMissionTerminal);
 
         var mergeFunctions = new Command("merge-functions",
@@ -162,18 +167,18 @@ public class Program {
 Leading underscores can be used to work around special function names being illegal in the editor.");
         mergeFunctions.Add(assetSource);
         mergeFunctions.Add(assetDestination);
-        mergeFunctions.SetHandler(MergeFunctions, ueVersion, assetSource, assetDestination);
+        mergeFunctions.SetHandler(MergeFunctions, ueVersion, mappings, assetSource, assetDestination);
         rootCommand.AddCommand(mergeFunctions);
 
         var findSchematics = new Command("find-schematics", "Find all Deep Rock Galactic schematics");
         findSchematics.Add(assetInputDirectory);
-        findSchematics.SetHandler(FindSchematics, ueVersion, assetInputDirectory);
+        findSchematics.SetHandler(FindSchematics, ueVersion, mappings, assetInputDirectory);
         rootCommand.AddCommand(findSchematics);
 
         var makeModRemoveWeaponBobbing = new Command("make-mod-remove-weapon-bobbing", "Generate remove weapon bobbing assets");
         makeModRemoveWeaponBobbing.Add(assetInputDirectory);
         makeModRemoveWeaponBobbing.Add(assetOutputDirectory);
-        makeModRemoveWeaponBobbing.SetHandler(MakeModRemoveWeaponBobbing, ueVersion, assetInputDirectory, assetOutputDirectory);
+        makeModRemoveWeaponBobbing.SetHandler(MakeModRemoveWeaponBobbing, ueVersion, mappings, assetInputDirectory, assetOutputDirectory);
         rootCommand.AddCommand(makeModRemoveWeaponBobbing);
 
         var makeModRemoveAllParticles = new Command("make-mod-remove-all-particles", "Generate remove all particles assets");
@@ -182,7 +187,7 @@ Leading underscores can be used to work around special function names being ille
 
         var getType = new Command("get-type", "Get asset type");
         getType.Add(assetInputDirectory);
-        getType.SetHandler(GetType, ueVersion, assetInputDirectory);
+        getType.SetHandler(GetType, ueVersion, mappings, assetInputDirectory);
         rootCommand.AddCommand(getType);
 
         var akExport = new Command("abstract-kismet-export", "Export abstract kismet");
@@ -219,8 +224,11 @@ Leading underscores can be used to work around special function names being ille
         enumOptions.RecurseSubdirectories = true;
         return new[] { "*.uasset", "*.umap" }.SelectMany(pattern => Directory.EnumerateFiles(directory, pattern, enumOptions));
     }
-    static void Cfg(EngineVersion ueVersion, string assetPath, string? dotPath) {
-        UAsset asset = new UAsset(assetPath, ueVersion);
+    static UAsset LoadAsset(EngineVersion ueVersion, string? mappings, string assetPath) {
+        return mappings != null ? new UAsset(assetPath, ueVersion, new Usmap(mappings)) : new UAsset(assetPath, ueVersion);
+    }
+    static void Cfg(EngineVersion ueVersion, string? mappings, string assetPath, string? dotPath) {
+        UAsset asset = LoadAsset(ueVersion, mappings, assetPath);
         string outputPath = Path.Join(System.IO.Path.GetTempPath(), $"{Path.GetFileNameWithoutExtension(assetPath)}-{Guid.NewGuid().ToString()}.html");
 
         ProcessStartInfo info = new ProcessStartInfo(dotPath ?? "dot");
@@ -252,8 +260,8 @@ Leading underscores can be used to work around special function names being ille
 
         OpenUrl(outputPath);
     }
-    static void GenCfg(EngineVersion ueVersion, string assetPath, string outputDir) {
-        UAsset asset = new UAsset(assetPath, ueVersion);
+    static void GenCfg(EngineVersion ueVersion, string? mappings, string assetPath, string outputDir) {
+        UAsset asset = LoadAsset(ueVersion, mappings, assetPath);
         var fileName = Path.GetFileName(assetPath);
         var output = new StreamWriter(Path.Join(outputDir, Path.ChangeExtension(fileName, ".txt")));
         var dotOutput = new StreamWriter(Path.Join(outputDir, Path.ChangeExtension(fileName, ".dot")));
@@ -267,7 +275,7 @@ Leading underscores can be used to work around special function names being ille
         public TextWriter StdError {get; set;}
         public TextWriter NullOut {get; set;}
     }
-    static void GenCfgTree(EngineVersion ueVersion, string assetInputDir, string output, string projectName, bool render, string? dotPath, bool showProgress) {
+    static void GenCfgTree(EngineVersion ueVersion, string? mappings, string assetInputDir, string output, string projectName, bool render, string? dotPath, bool showProgress) {
         void RenderDot(string path) {
             ProcessStartInfo info = new ProcessStartInfo(dotPath ?? "dot");
             info.ArgumentList.Add(path);
@@ -313,7 +321,7 @@ Leading underscores can be used to work around special function names being ille
                 p2.Bar.Refresh(i++, $"Hierarchy... ({Path.GetFileName(assetPath)})");
                 Console.SetOut(p2.NullOut);
             }
-            var asset = new UAsset(assetPath, ueVersion);
+            var asset = LoadAsset(ueVersion, mappings, assetPath);
             var classExport = asset.GetClassExport();
             if (classExport != null) {
                 var parent = classExport.SuperStruct.ToImport(asset);
@@ -351,7 +359,7 @@ Leading underscores can be used to work around special function names being ille
             var outputDir = Path.GetDirectoryName(Path.Join(output, "cfgs", Path.GetRelativePath(assetInputDir, assetPath)));
             var outputPath = Path.Join(outputDir, Path.ChangeExtension(Path.GetFileName(assetPath), ".dot"));
             Directory.CreateDirectory(outputDir);
-            GenCfg(ueVersion, assetPath, outputDir);
+            GenCfg(ueVersion, mappings, assetPath, outputDir);
             if (render) {
                 RenderDot(outputPath);
             }
@@ -363,31 +371,31 @@ Leading underscores can be used to work around special function names being ille
         }
         Console.WriteLine($"Finished generating CFGs for {assets.Count()} assets");
     }
-    static void GenJsonTree(EngineVersion ueVersion, string assetInputDir, string jsonOutputDir) {
+    static void GenJsonTree(EngineVersion ueVersion, string? mappings, string assetInputDir, string jsonOutputDir) {
         foreach (var assetPath in GetAssets(assetInputDir)) {
             var outputPath = Path.ChangeExtension(Path.Join(jsonOutputDir, Path.GetRelativePath(assetInputDir, assetPath)), ".json");
 
-            var asset = new UAsset(assetPath, ueVersion);
+            var asset = LoadAsset(ueVersion, mappings, assetPath);
 
-            string jsonSerializedAsset = new UAsset(assetPath, ueVersion).SerializeJson(Newtonsoft.Json.Formatting.Indented);
+            string jsonSerializedAsset = asset.SerializeJson(Newtonsoft.Json.Formatting.Indented);
             Console.WriteLine(outputPath);
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
             File.WriteAllText(outputPath, jsonSerializedAsset);
         }
     }
-    static void ToJson(EngineVersion ueVersion, string assetInput) {
-        Console.WriteLine(new UAsset(assetInput, ueVersion).SerializeJson(Newtonsoft.Json.Formatting.Indented));
+    static void ToJson(EngineVersion ueVersion, string? mappings, string assetInput) {
+        Console.WriteLine(LoadAsset(ueVersion, mappings, assetInput).SerializeJson(Newtonsoft.Json.Formatting.Indented));
     }
-    static void Read(EngineVersion ueVersion, string assetInput) {
-        new UAsset(assetInput, ueVersion);
+    static void Read(EngineVersion ueVersion, string? mappings, string assetInput) {
+        LoadAsset(ueVersion, mappings, assetInput);
         Console.WriteLine("complete");
     }
-    static void FromJson(EngineVersion ueVersion, string assetOutput) {
+    static void FromJson(EngineVersion ueVersion, string? mappings, string assetOutput) {
         UAsset.DeserializeJson(Console.OpenStandardInput()).Write(assetOutput);
     }
-    static void CopyImports(EngineVersion ueVersion, string assetSource, string assetDestination, IList<int> imports) {
-        UAsset from = new UAsset(assetSource, ueVersion);
-        UAsset to = new UAsset(assetDestination, ueVersion);
+    static void CopyImports(EngineVersion ueVersion, string? mappings, string assetSource, string assetDestination, IList<int> imports) {
+        UAsset from = LoadAsset(ueVersion, mappings, assetSource);
+        UAsset to = LoadAsset(ueVersion, mappings, assetDestination);
 
         foreach (var index in imports) {
             var newIndex = Kismet.CopyImportTo((from, FPackageIndex.FromRawIndex(index)), to);
@@ -397,19 +405,19 @@ Leading underscores can be used to work around special function names being ille
 
         to.Write(assetDestination);
     }
-    static void SpliceAsset(EngineVersion ueVersion, string assetInput, string assetOutput) {
-        UAsset input = new UAsset(assetInput, ueVersion);
+    static void SpliceAsset(EngineVersion ueVersion, string? mappings, string assetInput, string assetOutput) {
+        UAsset input = LoadAsset(ueVersion, mappings, assetInput);
         Kismet.SpliceAsset(input);
         input.Write(assetOutput);
     }
-    static void SpliceMissionTerminal(EngineVersion ueVersion, string assetInput, string assetOutput) {
-        UAsset input = new UAsset(assetInput, ueVersion);
+    static void SpliceMissionTerminal(EngineVersion ueVersion, string? mappings, string assetInput, string assetOutput) {
+        UAsset input = LoadAsset(ueVersion, mappings, assetInput);
         Kismet.SpliceMissionTerminal(input);
         input.Write(assetOutput);
     }
-    static void MergeFunctions(EngineVersion ueVersion, string assetSource, string assetDestination) {
-        UAsset source = new UAsset(assetSource, ueVersion);
-        UAsset dest = new UAsset(assetDestination, ueVersion);
+    static void MergeFunctions(EngineVersion ueVersion, string? mappings, string assetSource, string assetDestination) {
+        UAsset source = LoadAsset(ueVersion, mappings, assetSource);
+        UAsset dest = LoadAsset(ueVersion, mappings, assetDestination);
         foreach (var export in source.Exports) {
             if (export is FunctionExport fnSrc) {
                 if (export.ObjectName.ToString().StartsWith("ExecuteUbergraph")) {
@@ -457,20 +465,20 @@ Leading underscores can be used to work around special function names being ille
         }
         dest.Write(assetDestination);
     }
-    static void GenBlueprint(EngineVersion ueVersion, string contextPath, string assetSource, string assetDestination) {
+    static void GenBlueprint(EngineVersion ueVersion, string? mappings, string contextPath, string assetSource, string assetDestination) {
         var context = UEContext.FromFile(contextPath);
 
-        UAsset source = new UAsset(assetSource, ueVersion);
+        UAsset source = LoadAsset(ueVersion, mappings, assetSource);
         var generator = new BlueprintGenerator(context, source);
         generator.Generate();
     }
 
-    static void FindSchematics(EngineVersion ueVersion, string assetInputDir) {
+    static void FindSchematics(EngineVersion ueVersion, string? mappings, string assetInputDir) {
         foreach (var assetPath in GetAssets(assetInputDir)) {
             //var file = Path.GetFileName(assetPath);
             //if (!Path.GetFileName(assetPath).StartsWith("IAS_") || file == "IAS_Snowball.uasset") continue;
 
-            UAsset asset = new UAsset(assetPath, ueVersion);
+            UAsset asset = LoadAsset(ueVersion, mappings, assetPath);
             //Console.WriteLine(assetPath);
             foreach (var export in asset.Exports) {
                 if (export.ClassIndex.IsImport() && export.ClassIndex.ToImport(asset).ObjectName.ToString() == "Schematic" && export is NormalExport e) {
@@ -550,7 +558,7 @@ Leading underscores can be used to work around special function names being ille
         }
     }
 
-    static void MakeModRemoveWeaponBobbing(EngineVersion ueVersion, string assetInputDirectory, string assetOutputDirectory) {
+    static void MakeModRemoveWeaponBobbing(EngineVersion ueVersion, string? mappings, string assetInputDirectory, string assetOutputDirectory) {
         List<string> fpNames = new List<string> {
             //"FP_Idle",
             //"FP_InspectWeapon",
@@ -568,7 +576,7 @@ Leading underscores can be used to work around special function names being ille
             if (!Path.GetFileName(assetPath).StartsWith("IAS_") || file == "IAS_Snowball.uasset") continue;
             var outputPath = Path.Join(assetOutputDirectory, Path.GetRelativePath(assetInputDirectory, assetPath));
 
-            UAsset asset = new UAsset(assetPath, ueVersion);
+            UAsset asset = LoadAsset(ueVersion, mappings, assetPath);
             Console.WriteLine(assetPath);
             foreach (var export in asset.Exports) {
                 if (export.ClassIndex.IsImport() && export.ClassIndex.ToImport(asset).ObjectName.ToString() == "ItemCharacterAnimationSet" && export is NormalExport e) {
@@ -610,7 +618,7 @@ Leading underscores can be used to work around special function names being ille
         foreach (var (assetPath, animationType) in animations) {
             var outputPath = Path.Join(assetOutputDirectory, Path.GetRelativePath(assetInputDirectory, assetPath));
 
-            UAsset asset = new UAsset(assetPath, ueVersion);
+            UAsset asset = LoadAsset(ueVersion, mappings, assetPath);
             string? type = null;
             foreach (var export in asset.Exports) {
                 if (export.ClassIndex.IsImport() && export.ClassIndex.ToImport(asset).ObjectName.ToString() == "AnimSequence" && export is NormalExport e) {
@@ -849,7 +857,7 @@ Leading underscores can be used to work around special function names being ille
         }
     }
 
-    static void GetType(EngineVersion ueVersion, string assetInputDirectory) {
+    static void GetType(EngineVersion ueVersion, string? mappings, string assetInputDirectory) {
         var autoVerified = new HashSet<string> {
             "SoundWave",
             "SoundCue",
@@ -865,7 +873,7 @@ Leading underscores can be used to work around special function names being ille
             "StringTable",
         };
         foreach (var (type, autoVerify, asset) in GetAssets(assetInputDirectory).AsParallel().Select(assetPath => {
-            UAsset asset = new UAsset(assetPath, ueVersion);
+            UAsset asset = LoadAsset(ueVersion, mappings, assetPath);
             var primary = asset.Exports.First(e => e.OuterIndex.IsNull());
             var type = primary.ClassIndex.ToImport(asset).ObjectName.ToString();
             return (
