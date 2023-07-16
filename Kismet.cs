@@ -9,189 +9,189 @@ using UAssetAPI.Kismet.Bytecode;
 using UAssetAPI.Kismet.Bytecode.Expressions;
 
 public class Kismet {
-    public static void Walk(KismetExpression ex, Action<KismetExpression> func) {
+    public static void Walk(UAsset asset, KismetExpression ex, Action<KismetExpression> func) {
         uint offset = 0;
-        Walk(ref offset, ex, (ex, offset) => func(ex));
+        Walk(asset, ref offset, ex, (ex, offset) => func(ex));
     }
-    public static void Walk(ref uint offset, KismetExpression ex, Action<KismetExpression, uint> func) {
+    public static void Walk(UAsset asset, ref uint offset, KismetExpression ex, Action<KismetExpression, uint> func) {
         func(ex, offset);
         offset++;
         switch (ex) {
             case EX_FieldPathConst e:
-                Walk(ref offset, e.Value, func);
+                Walk(asset, ref offset, e.Value, func);
                 break;
             case EX_SoftObjectConst e:
-                Walk(ref offset, e.Value, func);
+                Walk(asset, ref offset, e.Value, func);
                 break;
             case EX_AddMulticastDelegate e:
-                Walk(ref offset, e.Delegate, func);
-                Walk(ref offset, e.DelegateToAdd, func);
+                Walk(asset, ref offset, e.Delegate, func);
+                Walk(asset, ref offset, e.DelegateToAdd, func);
                 break;
             case EX_ArrayConst e:
                 offset += 8;
-                foreach (var p in e.Elements) Walk(ref offset, p, func);
+                foreach (var p in e.Elements) Walk(asset, ref offset, p, func);
                 break;
             case EX_ArrayGetByRef e:
-                Walk(ref offset, e.ArrayVariable, func);
-                Walk(ref offset, e.ArrayIndex, func);
+                Walk(asset, ref offset, e.ArrayVariable, func);
+                Walk(asset, ref offset, e.ArrayIndex, func);
                 break;
             case EX_Assert e:
                 offset += 3;
-                Walk(ref offset, e.AssertExpression, func);
+                Walk(asset, ref offset, e.AssertExpression, func);
                 break;
             case EX_BindDelegate e:
                 offset += 12;
-                Walk(ref offset, e.Delegate, func);
-                Walk(ref offset, e.ObjectTerm, func);
+                Walk(asset, ref offset, e.Delegate, func);
+                Walk(asset, ref offset, e.ObjectTerm, func);
                 break;
             case EX_CallMath e:
                 offset += 8;
-                foreach (var p in e.Parameters) Walk(ref offset, p, func);
+                foreach (var p in e.Parameters) Walk(asset, ref offset, p, func);
                 offset += 1;
                 break;
             case EX_CallMulticastDelegate e:
                 offset += 8;
-                Walk(ref offset, e.Delegate, func);
-                foreach (var p in e.Parameters) Walk(ref offset, p, func);
+                Walk(asset, ref offset, e.Delegate, func);
+                foreach (var p in e.Parameters) Walk(asset, ref offset, p, func);
                 offset += 1;
                 break;
             case EX_ClearMulticastDelegate e:
-                Walk(ref offset, e.DelegateToClear, func);
+                Walk(asset, ref offset, e.DelegateToClear, func);
                 break;
             case EX_ComputedJump e:
-                Walk(ref offset, e.CodeOffsetExpression, func);
+                Walk(asset, ref offset, e.CodeOffsetExpression, func);
                 break;
             case EX_Context e: // +EX_Context_FailSilent +EX_ClassContext
-                Walk(ref offset, e.ObjectExpression, func);
+                Walk(asset, ref offset, e.ObjectExpression, func);
                 offset += 12;
-                Walk(ref offset, e.ContextExpression, func);
+                Walk(asset, ref offset, e.ContextExpression, func);
                 break;
             case EX_CrossInterfaceCast e:
                 offset += 8;
-                Walk(ref offset, e.Target, func);
+                Walk(asset, ref offset, e.Target, func);
                 break;
             case EX_DynamicCast e:
                 offset += 8;
-                Walk(ref offset, e.TargetExpression, func);
+                Walk(asset, ref offset, e.TargetExpression, func);
                 break;
             case EX_FinalFunction e: // +EX_LocalFinalFunction
                 offset += 8;
-                foreach (var p in e.Parameters) Walk(ref offset, p, func);
+                foreach (var p in e.Parameters) Walk(asset, ref offset, p, func);
                 offset += 1;
                 break;
             case EX_InterfaceContext e:
-                Walk(ref offset, e.InterfaceValue, func);
+                Walk(asset, ref offset, e.InterfaceValue, func);
                 break;
             case EX_InterfaceToObjCast e:
                 offset += 8;
-                Walk(ref offset, e.Target, func);
+                Walk(asset, ref offset, e.Target, func);
                 break;
             case EX_JumpIfNot e:
                 offset += 4;
-                Walk(ref offset, e.BooleanExpression, func);
+                Walk(asset, ref offset, e.BooleanExpression, func);
                 break;
             case EX_Let e:
                 offset += 8;
-                Walk(ref offset, e.Variable, func);
-                Walk(ref offset, e.Expression, func);
+                Walk(asset, ref offset, e.Variable, func);
+                Walk(asset, ref offset, e.Expression, func);
                 break;
             case EX_LetBool e:
-                Walk(ref offset, e.VariableExpression, func);
-                Walk(ref offset, e.AssignmentExpression, func);
+                Walk(asset, ref offset, e.VariableExpression, func);
+                Walk(asset, ref offset, e.AssignmentExpression, func);
                 break;
             case EX_LetDelegate e:
-                Walk(ref offset, e.VariableExpression, func);
-                Walk(ref offset, e.AssignmentExpression, func);
+                Walk(asset, ref offset, e.VariableExpression, func);
+                Walk(asset, ref offset, e.AssignmentExpression, func);
                 break;
             case EX_LetMulticastDelegate e:
-                Walk(ref offset, e.VariableExpression, func);
-                Walk(ref offset, e.AssignmentExpression, func);
+                Walk(asset, ref offset, e.VariableExpression, func);
+                Walk(asset, ref offset, e.AssignmentExpression, func);
                 break;
             case EX_LetObj e:
-                Walk(ref offset, e.VariableExpression, func);
-                Walk(ref offset, e.AssignmentExpression, func);
+                Walk(asset, ref offset, e.VariableExpression, func);
+                Walk(asset, ref offset, e.AssignmentExpression, func);
                 break;
             case EX_LetValueOnPersistentFrame e:
                 offset += 8;
-                Walk(ref offset, e.AssignmentExpression, func);
+                Walk(asset, ref offset, e.AssignmentExpression, func);
                 break;
             case EX_LetWeakObjPtr e:
-                Walk(ref offset, e.VariableExpression, func);
-                Walk(ref offset, e.AssignmentExpression, func);
+                Walk(asset, ref offset, e.VariableExpression, func);
+                Walk(asset, ref offset, e.AssignmentExpression, func);
                 break;
             case EX_VirtualFunction e: // +EX_LocalVirtualFunction
                 offset += 12;
-                foreach (var p in e.Parameters) Walk(ref offset, p, func);
+                foreach (var p in e.Parameters) Walk(asset, ref offset, p, func);
                 offset += 1;
                 break;
             case EX_MapConst e:
                 offset += 20;
-                foreach (var p in e.Elements) Walk(ref offset, p, func);
+                foreach (var p in e.Elements) Walk(asset, ref offset, p, func);
                 break;
             case EX_MetaCast e:
                 offset += 8;
-                Walk(ref offset, e.TargetExpression, func);
+                Walk(asset, ref offset, e.TargetExpression, func);
                 break;
             case EX_ObjToInterfaceCast e:
                 offset += 8;
-                Walk(ref offset, e.Target, func);
+                Walk(asset, ref offset, e.Target, func);
                 break;
             case EX_PopExecutionFlowIfNot e:
-                Walk(ref offset, e.BooleanExpression, func);
+                Walk(asset, ref offset, e.BooleanExpression, func);
                 break;
             case EX_PrimitiveCast e:
                 offset += 1;
-                Walk(ref offset, e.Target, func);
+                Walk(asset, ref offset, e.Target, func);
                 break;
             case EX_RemoveMulticastDelegate e:
-                Walk(ref offset, e.Delegate, func);
-                Walk(ref offset, e.DelegateToAdd, func);
+                Walk(asset, ref offset, e.Delegate, func);
+                Walk(asset, ref offset, e.DelegateToAdd, func);
                 break;
             case EX_Return e:
-                Walk(ref offset, e.ReturnExpression, func);
+                Walk(asset, ref offset, e.ReturnExpression, func);
                 break;
             case EX_SetArray e:
-                Walk(ref offset, e.AssigningProperty, func);
-                foreach (var p in e.Elements) Walk(ref offset, p, func);
+                Walk(asset, ref offset, e.AssigningProperty, func);
+                foreach (var p in e.Elements) Walk(asset, ref offset, p, func);
                 offset += 1;
                 break;
             case EX_SetConst e:
                 offset += 12;
-                foreach (var p in e.Elements) Walk(ref offset, p, func);
+                foreach (var p in e.Elements) Walk(asset, ref offset, p, func);
                 offset += 1;
                 break;
             case EX_SetMap e:
-                Walk(ref offset, e.MapProperty, func);
+                Walk(asset, ref offset, e.MapProperty, func);
                 offset += 4;
-                foreach (var p in e.Elements) Walk(ref offset, p, func);
+                foreach (var p in e.Elements) Walk(asset, ref offset, p, func);
                 break;
             case EX_SetSet e:
-                Walk(ref offset, e.SetProperty, func);
+                Walk(asset, ref offset, e.SetProperty, func);
                 offset += 4;
-                foreach (var p in e.Elements) Walk(ref offset, p, func);
+                foreach (var p in e.Elements) Walk(asset, ref offset, p, func);
                 break;
             case EX_Skip e:
                 offset += 4;
-                Walk(ref offset, e.SkipExpression, func);
+                Walk(asset, ref offset, e.SkipExpression, func);
                 break;
             case EX_StructConst e:
                 offset += 12;
-                foreach (var p in e.Value) Walk(ref offset, p, func);
+                foreach (var p in e.Value) Walk(asset, ref offset, p, func);
                 offset += 1;
                 break;
             case EX_StructMemberContext e:
                 offset += 8;
-                Walk(ref offset, e.StructExpression, func);
+                Walk(asset, ref offset, e.StructExpression, func);
                 break;
             case EX_SwitchValue e:
                 offset += 6;
-                Walk(ref offset, e.IndexTerm, func);
+                Walk(asset, ref offset, e.IndexTerm, func);
                 foreach (var p in e.Cases) {
-                    Walk(ref offset, p.CaseIndexValueTerm, func);
+                    Walk(asset, ref offset, p.CaseIndexValueTerm, func);
                     offset += 4;
-                    Walk(ref offset, p.CaseTerm, func);
+                    Walk(asset, ref offset, p.CaseTerm, func);
                 }
-                Walk(ref offset, e.DefaultTerm, func);
+                Walk(asset, ref offset, e.DefaultTerm, func);
                 break;
             case EX_TextConst e:
                 offset += 1;
@@ -199,84 +199,84 @@ public class Kismet {
                     case EBlueprintTextLiteralType.Empty:
                         break;
                     case EBlueprintTextLiteralType.LocalizedText:
-                        Walk(ref offset, e.Value.LocalizedSource, func);
-                        Walk(ref offset, e.Value.LocalizedKey, func);
-                        Walk(ref offset, e.Value.LocalizedNamespace, func);
+                        Walk(asset, ref offset, e.Value.LocalizedSource, func);
+                        Walk(asset, ref offset, e.Value.LocalizedKey, func);
+                        Walk(asset, ref offset, e.Value.LocalizedNamespace, func);
                         break;
                     case EBlueprintTextLiteralType.InvariantText:
-                        Walk(ref offset, e.Value.InvariantLiteralString, func);
+                        Walk(asset, ref offset, e.Value.InvariantLiteralString, func);
                         break;
                     case EBlueprintTextLiteralType.LiteralString:
-                        Walk(ref offset, e.Value.LiteralString, func);
+                        Walk(asset, ref offset, e.Value.LiteralString, func);
                         break;
                     case EBlueprintTextLiteralType.StringTableEntry:
                         offset += 8;
-                        Walk(ref offset, e.Value.StringTableId, func);
-                        Walk(ref offset, e.Value.StringTableKey, func);
+                        Walk(asset, ref offset, e.Value.StringTableId, func);
+                        Walk(asset, ref offset, e.Value.StringTableKey, func);
                         break;
                     default:
                         throw new NotImplementedException();
                 };
                 break;
             default:
-                offset += GetSize(ex) - 1;
+                offset += GetSize(asset, ex) - 1;
                 break;
         }
     }
-    public static uint GetSize(KismetExpression exp) {
+    public static uint GetSize(UAsset asset, KismetExpression exp) {
         return 1 + exp switch
         {
             EX_PushExecutionFlow => 4,
-            EX_ComputedJump e => GetSize(e.CodeOffsetExpression),
+            EX_ComputedJump e => GetSize(asset, e.CodeOffsetExpression),
             EX_Jump e => 4,
-            EX_JumpIfNot e => 4 + GetSize(e.BooleanExpression),
+            EX_JumpIfNot e => 4 + GetSize(asset, e.BooleanExpression),
             EX_LocalVariable e => 8,
             EX_DefaultVariable e => 8,
-            EX_ObjToInterfaceCast e => 8 + GetSize(e.Target),
-            EX_Let e => 8 + GetSize(e.Variable) + GetSize(e.Expression),
-            EX_LetObj e => GetSize(e.VariableExpression) + GetSize(e.AssignmentExpression),
-            EX_LetBool e => GetSize(e.VariableExpression) + GetSize(e.AssignmentExpression),
-            EX_LetWeakObjPtr e => GetSize(e.VariableExpression) + GetSize(e.AssignmentExpression),
-            EX_LetValueOnPersistentFrame e => 8 + GetSize(e.AssignmentExpression),
-            EX_StructMemberContext e => 8 + GetSize(e.StructExpression),
-            EX_MetaCast e => 8 + GetSize(e.TargetExpression),
-            EX_DynamicCast e => 8 + GetSize(e.TargetExpression),
-            EX_PrimitiveCast e => 1 + e.ConversionType switch { ECastToken.ObjectToInterface => 8U, /* TODO InterfaceClass */ _ => 0U} + GetSize(e.Target),
+            EX_ObjToInterfaceCast e => 8 + GetSize(asset, e.Target),
+            EX_Let e => 8 + GetSize(asset, e.Variable) + GetSize(asset, e.Expression),
+            EX_LetObj e => GetSize(asset, e.VariableExpression) + GetSize(asset, e.AssignmentExpression),
+            EX_LetBool e => GetSize(asset, e.VariableExpression) + GetSize(asset, e.AssignmentExpression),
+            EX_LetWeakObjPtr e => GetSize(asset, e.VariableExpression) + GetSize(asset, e.AssignmentExpression),
+            EX_LetValueOnPersistentFrame e => 8 + GetSize(asset, e.AssignmentExpression),
+            EX_StructMemberContext e => 8 + GetSize(asset, e.StructExpression),
+            EX_MetaCast e => 8 + GetSize(asset, e.TargetExpression),
+            EX_DynamicCast e => 8 + GetSize(asset, e.TargetExpression),
+            EX_PrimitiveCast e => 1 + e.ConversionType switch { ECastToken.ObjectToInterface => 8U, /* TODO InterfaceClass */ _ => 0U} + GetSize(asset, e.Target),
             EX_PopExecutionFlow e => 0,
-            EX_PopExecutionFlowIfNot e => GetSize(e.BooleanExpression),
-            EX_CallMath e => 8 + e.Parameters.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
-            EX_SwitchValue e => 6 + GetSize(e.IndexTerm) + e.Cases.Select(c => GetSize(c.CaseIndexValueTerm) + 4 + GetSize(c.CaseTerm)).Aggregate(0U, (acc, x) => x + acc) + GetSize(e.DefaultTerm),
+            EX_PopExecutionFlowIfNot e => GetSize(asset, e.BooleanExpression),
+            EX_CallMath e => 8 + e.Parameters.Select(p => GetSize(asset, p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_SwitchValue e => 6 + GetSize(asset, e.IndexTerm) + e.Cases.Select(c => GetSize(asset, c.CaseIndexValueTerm) + 4 + GetSize(asset, c.CaseTerm)).Aggregate(0U, (acc, x) => x + acc) + GetSize(asset, e.DefaultTerm),
             EX_Self => 0,
             EX_TextConst e =>
                 1 + e.Value.TextLiteralType switch
                 {
                     EBlueprintTextLiteralType.Empty => 0,
-                    EBlueprintTextLiteralType.LocalizedText => GetSize(e.Value.LocalizedSource) + GetSize(e.Value.LocalizedKey) + GetSize(e.Value.LocalizedNamespace),
-                    EBlueprintTextLiteralType.InvariantText => GetSize(e.Value.InvariantLiteralString),
-                    EBlueprintTextLiteralType.LiteralString => GetSize(e.Value.LiteralString),
-                    EBlueprintTextLiteralType.StringTableEntry => 8 + GetSize(e.Value.StringTableId) + GetSize(e.Value.StringTableKey),
+                    EBlueprintTextLiteralType.LocalizedText => GetSize(asset, e.Value.LocalizedSource) + GetSize(asset, e.Value.LocalizedKey) + GetSize(asset, e.Value.LocalizedNamespace),
+                    EBlueprintTextLiteralType.InvariantText => GetSize(asset, e.Value.InvariantLiteralString),
+                    EBlueprintTextLiteralType.LiteralString => GetSize(asset, e.Value.LiteralString),
+                    EBlueprintTextLiteralType.StringTableEntry => 8 + GetSize(asset, e.Value.StringTableId) + GetSize(asset, e.Value.StringTableKey),
                     _ => throw new NotImplementedException(),
                 },
             EX_ObjectConst e => 8,
-            EX_VectorConst e => 12,
-            EX_RotationConst e => 12,
-            EX_TransformConst e => 40,
-            EX_Context e => + GetSize(e.ObjectExpression) + 4 + 8 + GetSize(e.ContextExpression),
-            EX_CallMulticastDelegate e => 8 + GetSize(e.Delegate) + e.Parameters.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
-            EX_LocalFinalFunction e => 8 + e.Parameters.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
-            EX_FinalFunction e => 8 + e.Parameters.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
-            EX_LocalVirtualFunction e => 12 + e.Parameters.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
-            EX_VirtualFunction e => 12 + e.Parameters.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_VectorConst e => asset.ObjectVersionUE5 >= ObjectVersionUE5.LARGE_WORLD_COORDINATES ? 24U : 12U,
+            EX_RotationConst e => asset.ObjectVersionUE5 >= ObjectVersionUE5.LARGE_WORLD_COORDINATES ? 24U : 12U,
+            EX_TransformConst e => asset.ObjectVersionUE5 >= ObjectVersionUE5.LARGE_WORLD_COORDINATES ? 80U : 40U,
+            EX_Context e => + GetSize(asset, e.ObjectExpression) + 4 + 8 + GetSize(asset, e.ContextExpression),
+            EX_CallMulticastDelegate e => 8 + GetSize(asset, e.Delegate) + e.Parameters.Select(p => GetSize(asset, p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_LocalFinalFunction e => 8 + e.Parameters.Select(p => GetSize(asset, p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_FinalFunction e => 8 + e.Parameters.Select(p => GetSize(asset, p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_LocalVirtualFunction e => 12 + e.Parameters.Select(p => GetSize(asset, p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_VirtualFunction e => 12 + e.Parameters.Select(p => GetSize(asset, p)).Aggregate(0U, (acc, x) => x + acc) + 1,
             EX_InstanceVariable e => 8,
-            EX_AddMulticastDelegate e => GetSize(e.Delegate) + GetSize(e.DelegateToAdd),
-            EX_RemoveMulticastDelegate e => GetSize(e.Delegate) + GetSize(e.DelegateToAdd),
-            EX_ClearMulticastDelegate e => GetSize(e.DelegateToClear),
-            EX_BindDelegate e => 12 + GetSize(e.Delegate) + GetSize(e.ObjectTerm),
-            EX_StructConst e => 8 + 4 + e.Value.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
-            EX_SetArray e => GetSize(e.AssigningProperty) + e.Elements.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
-            EX_SetMap e => GetSize(e.MapProperty) + 4 + e.Elements.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
-            EX_SetSet e => GetSize(e.SetProperty) + 4 + e.Elements.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
-            EX_SoftObjectConst e => GetSize(e.Value),
+            EX_AddMulticastDelegate e => GetSize(asset, e.Delegate) + GetSize(asset, e.DelegateToAdd),
+            EX_RemoveMulticastDelegate e => GetSize(asset, e.Delegate) + GetSize(asset, e.DelegateToAdd),
+            EX_ClearMulticastDelegate e => GetSize(asset, e.DelegateToClear),
+            EX_BindDelegate e => 12 + GetSize(asset, e.Delegate) + GetSize(asset, e.ObjectTerm),
+            EX_StructConst e => 8 + 4 + e.Value.Select(p => GetSize(asset, p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_SetArray e => GetSize(asset, e.AssigningProperty) + e.Elements.Select(p => GetSize(asset, p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_SetMap e => GetSize(asset, e.MapProperty) + 4 + e.Elements.Select(p => GetSize(asset, p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_SetSet e => GetSize(asset, e.SetProperty) + 4 + e.Elements.Select(p => GetSize(asset, p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_SoftObjectConst e => GetSize(asset, e.Value),
             EX_ByteConst e => 1,
             EX_IntConst e => 4,
             EX_FloatConst e => 4,
@@ -286,12 +286,12 @@ public class Kismet {
             EX_StringConst e => (uint) e.Value.Length + 1,
             EX_UnicodeStringConst e => 2 * ((uint) e.Value.Length + 1),
             EX_SkipOffsetConst e => 4,
-            EX_ArrayConst e => 12 + e.Elements.Select(p => GetSize(p)).Aggregate(0U, (acc, x) => x + acc) + 1,
-            EX_Return e => GetSize(e.ReturnExpression),
+            EX_ArrayConst e => 12 + e.Elements.Select(p => GetSize(asset, p)).Aggregate(0U, (acc, x) => x + acc) + 1,
+            EX_Return e => GetSize(asset, e.ReturnExpression),
             EX_LocalOutVariable e => 8,
-            EX_InterfaceContext e => GetSize(e.InterfaceValue),
-            EX_InterfaceToObjCast e => 8 + GetSize(e.Target),
-            EX_ArrayGetByRef e => GetSize(e.ArrayVariable) + GetSize(e.ArrayIndex),
+            EX_InterfaceContext e => GetSize(asset, e.InterfaceValue),
+            EX_InterfaceToObjCast e => 8 + GetSize(asset, e.Target),
+            EX_ArrayGetByRef e => GetSize(asset, e.ArrayVariable) + GetSize(asset, e.ArrayIndex),
             EX_True e => 0,
             EX_False e => 0,
             EX_Nothing e => 0,
@@ -869,12 +869,12 @@ public class Kismet {
         }
     }
 
-    public static IEnumerable<(uint, KismetExpression)> GetOffsets(KismetExpression[] bytecode) {
+    public static IEnumerable<(uint, KismetExpression)> GetOffsets(UAsset asset, KismetExpression[] bytecode) {
         var offsets = new List<(uint, KismetExpression)>();
         uint offset = 0;
         foreach (var inst in bytecode) {
             offsets.Add((offset, inst));
-            offset += Kismet.GetSize(inst);
+            offset += Kismet.GetSize(asset, inst);
         }
         return offsets;
     }
@@ -888,7 +888,7 @@ public class Kismet {
 
                 Console.WriteLine("found ubergraph");
 
-                var offsets = GetOffsets(ubergraph.ScriptBytecode).ToDictionary(l => l.Item1, l => l.Item2);
+                var offsets = GetOffsets(asset, ubergraph.ScriptBytecode).ToDictionary(l => l.Item1, l => l.Item2);
 
                 var list = ubergraph.ScriptBytecode.ToList();
 
@@ -910,7 +910,7 @@ public class Kismet {
 
                 ubergraph.ScriptBytecode = list.ToArray();
 
-                var newOffsets = GetOffsets(ubergraph.ScriptBytecode).ToDictionary(l => l.Item2, l => l.Item1);
+                var newOffsets = GetOffsets(asset, ubergraph.ScriptBytecode).ToDictionary(l => l.Item2, l => l.Item1);
 
                 foreach (var inst in ubergraph.ScriptBytecode) {
                     if (inst is EX_JumpIfNot jumpIfNot) {
@@ -951,7 +951,7 @@ public class Kismet {
         var srcFn = (FunctionExport) src.Exports.First(e => e is FunctionExport && e.ObjectName.ToString() == "PLS");
 
         var srcUg = (FunctionExport) src.Exports.First(e => e is FunctionExport && e.ObjectName.ToString() == "ExecuteUbergraph_Hook_PLS_Base");
-        var srcOffsets = GetOffsets(srcUg.ScriptBytecode).ToDictionary(l => l.Item1, l => l.Item2);
+        var srcOffsets = GetOffsets(asset, srcUg.ScriptBytecode).ToDictionary(l => l.Item1, l => l.Item2);
 
         var logFn = (EX_Context) srcFn.ScriptBytecode[0];
 
@@ -963,14 +963,14 @@ public class Kismet {
 
                 Console.WriteLine("found ubergraph");
 
-                var offsets = GetOffsets(ubergraph.ScriptBytecode).ToDictionary(l => l.Item1, l => l.Item2);
+                var offsets = GetOffsets(asset, ubergraph.ScriptBytecode).ToDictionary(l => l.Item1, l => l.Item2);
 
 
                 Func<string, KismetExpression> log = (msg) => {
                     var exp = CopyExpressionTo(logFn, src, asset, srcFn, ubergraph);
                     if (exp is EX_Context ctx && ctx.ContextExpression is EX_LocalVirtualFunction lvf) {
                         if (lvf.Parameters[1] is EX_StringConst scMsg) scMsg.Value = msg;
-                        ctx.Offset = GetSize(ctx.ContextExpression);
+                        ctx.Offset = GetSize(asset, ctx.ContextExpression);
                     }
                     return exp;
                 };
@@ -1046,7 +1046,7 @@ public class Kismet {
                 //}).ToArray();
                 ubergraph.ScriptBytecode = list.ToArray();
 
-                var newOffsets = GetOffsets(ubergraph.ScriptBytecode).ToDictionary(l => l.Item2, l => l.Item1);
+                var newOffsets = GetOffsets(asset, ubergraph.ScriptBytecode).ToDictionary(l => l.Item2, l => l.Item1);
 
                 foreach (var inst in ubergraph.ScriptBytecode) {
                     if (inst is EX_JumpIfNot jumpIfNot) {
@@ -1109,7 +1109,7 @@ public class Kismet {
                             }
                             var isReturn = inst.GetType() == typeof(EX_Return);
                             if (isReturn ? keepReturn : true) {
-                                offset += (int) Kismet.GetSize(inst);
+                                offset += (int) Kismet.GetSize(asset, inst);
                                 newInst.Add(Kismet.CopyExpressionTo(inst, source, dest, fnSrc, fnDest));
                             }
                             if (isReturn) break;

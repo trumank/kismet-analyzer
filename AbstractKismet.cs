@@ -84,7 +84,7 @@ public class AbstractKismetBuilder {
         foreach (var export in Asset.Exports) {
             if (export is FunctionExport fn) {
                 foreach (var inst in fn.ScriptBytecode) {
-                    KismetAnalyzer.Kismet.Walk(inst, ex => {
+                    KismetAnalyzer.Kismet.Walk(Asset, inst, ex => {
                         switch (ex) {
                             case EX_LocalFinalFunction e:
                                 if (ubergraph != null && e.StackNode.ToExport(Asset) == ubergraph && e.Parameters.Length == 1 && e.Parameters[0] is EX_IntConst offset)
@@ -128,7 +128,7 @@ public class AbstractKismetBuilder {
                 var inst = fn.ScriptBytecode.Select(e => {
                     var aex = this.FromKismetExpression(fn, e);
                     aex.Label = this.GetLabel((fn.ObjectName.ToString(), offset));
-                    offset += Kismet.GetSize(e);
+                    offset += Kismet.GetSize(Asset, e);
                     return aex;
                 });
                 functions.Add(fn.ObjectName.ToString(), inst);
@@ -398,18 +398,18 @@ public class KismetBuilder {
                     labels.Add(ae.Label, offset);
                 }
                 var ex = ae.ToKismetExpression(this);
-                offset += Kismet.GetSize(ex);
-                Kismet.Walk(ref offsetWalk, ex, (ex, offset) => {
+                offset += Kismet.GetSize(Asset, ex);
+                Kismet.Walk(Asset, ref offsetWalk, ex, (ex, offset) => {
                     // fix absolute offsets in EX_SwitchValue
                     if (ex is EX_SwitchValue e) {
-                        offset += 7 + Kismet.GetSize(e.IndexTerm);
+                        offset += 7 + Kismet.GetSize(Asset, e.IndexTerm);
                         e.Cases = e.Cases.Select(c => {
-                            offset += Kismet.GetSize(c.CaseIndexValueTerm);
+                            offset += Kismet.GetSize(Asset, c.CaseIndexValueTerm);
                             offset += 4;
-                            offset += Kismet.GetSize(c.CaseTerm);
+                            offset += Kismet.GetSize(Asset, c.CaseTerm);
                             return new FKismetSwitchCase(c.CaseIndexValueTerm, offset, c.CaseTerm);
                         }).ToArray();
-                        offset += Kismet.GetSize(e.DefaultTerm);
+                        offset += Kismet.GetSize(Asset, e.DefaultTerm);
                         e.EndGotoOffset = offset;
                     }
                 });

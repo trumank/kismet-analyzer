@@ -515,14 +515,14 @@ public class SummaryGenerator {
             case EX_VectorConst e:
                 {
                     lines = new Lines(String.Format("EX_{0} {1},{2},{3}", e.Inst, e.Value.X, e.Value.Y, e.Value.Z));
-                    index += 12;
+                    index += Asset.ObjectVersionUE5 >= ObjectVersionUE5.LARGE_WORLD_COORDINATES ? 24U : 12U;
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
             case EX_RotationConst e:
                 {
                     lines = new Lines(String.Format("EX_{0} {1},{2},{3}", e.Inst, e.Value.Pitch, e.Value.Yaw, e.Value.Roll));
-                    index += 12;
+                    index += Asset.ObjectVersionUE5 >= ObjectVersionUE5.LARGE_WORLD_COORDINATES ? 24U : 12U;
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
@@ -532,7 +532,7 @@ public class SummaryGenerator {
                                 e.Inst, e.Value.Rotation.X, e.Value.Rotation.Y, e.Value.Rotation.Z, e.Value.Rotation.W,
                                 e.Value.Translation.X, e.Value.Translation.Y, e.Value.Translation.Z,
                                 e.Value.Scale3D.X, e.Value.Scale3D.Y, e.Value.Scale3D.Z));
-                    index += 40;
+                    index += Asset.ObjectVersionUE5 >= ObjectVersionUE5.LARGE_WORLD_COORDINATES ? 80U : 40U;
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
