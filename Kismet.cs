@@ -352,9 +352,9 @@ public class Kismet {
         }
         var imp = import.Item2.ToImport(import.Item1);
         if (imp.OuterIndex.IsNull()) {
-            return asset.AddImport(new Import(imp.ClassPackage.ToString(), imp.ClassName.ToString(), FPackageIndex.FromRawIndex(0), imp.ObjectName.ToString(), asset));
+            return asset.AddImport(new Import(imp.ClassPackage.ToString(), imp.ClassName.ToString(), FPackageIndex.FromRawIndex(0), imp.ObjectName.ToString(), false, asset));
         } else {
-            return asset.AddImport(new Import(imp.ClassPackage.ToString(), imp.ClassName.ToString(), CopyImportTo((import.Item1, imp.OuterIndex), asset), imp.ObjectName.ToString(), asset));
+            return asset.AddImport(new Import(imp.ClassPackage.ToString(), imp.ClassName.ToString(), CopyImportTo((import.Item1, imp.OuterIndex), asset), imp.ObjectName.ToString(), false, asset));
         }
     }
     static bool AreImportsEqual((UAsset, FPackageIndex?) a, (UAsset, FPackageIndex?) b) {
