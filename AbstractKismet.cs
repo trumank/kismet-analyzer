@@ -213,6 +213,8 @@ public class AbstractKismetBuilder {
                 return new AEX_FinalFunction(this, fn, e);
             case EX_FloatConst e:
                 return new AEX_FloatConst(this, fn, e);
+            case EX_DoubleConst e:
+                return new AEX_DoubleConst(this, fn, e);
             case EX_InstanceDelegate e:
                 return new AEX_InstanceDelegate(this, fn, e);
             case EX_InstanceVariable e:
@@ -484,6 +486,7 @@ public struct AbstractKismetPropertyPointer {
 [JsonDerivedType(typeof(AEX_FieldPathConst), typeDiscriminator: "EX_FieldPathConst")]
 [JsonDerivedType(typeof(AEX_FinalFunction), typeDiscriminator: "EX_FinalFunction")]
 [JsonDerivedType(typeof(AEX_FloatConst), typeDiscriminator: "EX_FloatConst")]
+[JsonDerivedType(typeof(AEX_DoubleConst), typeDiscriminator: "EX_DoubleConst")]
 [JsonDerivedType(typeof(AEX_InstanceDelegate), typeDiscriminator: "EX_InstanceDelegate")]
 [JsonDerivedType(typeof(AEX_InstanceVariable), typeDiscriminator: "EX_InstanceVariable")]
 [JsonDerivedType(typeof(AEX_InstrumentationEvent), typeDiscriminator: "EX_InstrumentationEvent")]
@@ -981,6 +984,19 @@ public class AEX_FloatConst : AbstractKismetExpression {
     }
     public override KismetExpression ToKismetExpression(KismetBuilder b) {
         return new EX_FloatConst() {
+            Value = Value,
+        };
+    }
+}
+public class AEX_DoubleConst : AbstractKismetExpression {
+    public AEX_DoubleConst() {}
+    public double Value { get; set; }
+
+    public AEX_DoubleConst(AbstractKismetBuilder ab, FunctionExport fn, EX_DoubleConst e) {
+        Value = e.Value;
+    }
+    public override KismetExpression ToKismetExpression(KismetBuilder b) {
+        return new EX_DoubleConst() {
             Value = Value,
         };
     }

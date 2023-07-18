@@ -673,6 +673,12 @@ public class Kismet {
                         Value = e.Value,
                     };
                 }
+            case EX_DoubleConst e:
+                {
+                    return new EX_DoubleConst() {
+                        Value = e.Value,
+                    };
+                }
             case EX_VectorConst e:
                 {
                     return new EX_VectorConst() {

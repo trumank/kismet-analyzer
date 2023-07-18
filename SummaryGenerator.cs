@@ -789,6 +789,13 @@ public class SummaryGenerator {
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
+            case EX_DoubleConst e:
+                {
+                    lines = new Lines("EX_" + e.Inst + " " + e.Value);
+                    index += 8;
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
             case EX_NameConst e:
                 {
                     lines = new Lines("EX_" + e.Inst + " " + e.Value);
