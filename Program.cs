@@ -293,7 +293,7 @@ Leading underscores can be used to work around special function names being ille
             if (resourceName.StartsWith(prefix)) {
                 var fileName = resourceName.Substring(prefix.Length);
 
-                var outFile = File.Create(Path.Join(output, fileName));
+                var outFile = File.Create(Path.Join(output, "index." + fileName));
                 assembly.GetManifestResourceStream(resourceName).CopyTo(outFile);
                 outFile.Close();
             }
