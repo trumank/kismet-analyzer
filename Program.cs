@@ -227,21 +227,16 @@ Leading underscores can be used to work around special function names being ille
     static UAsset LoadAsset(EngineVersion ueVersion, string? mappings, string assetPath) {
         return mappings != null ? new UAsset(assetPath, ueVersion, new Usmap(mappings)) : new UAsset(assetPath, ueVersion);
     }
-    static void Cfg(EngineVersion ueVersion, string? mappings, string assetPath, string? dotPath) {
-        UAsset asset = LoadAsset(ueVersion, mappings, assetPath);
-        string outputPath = Path.Join(System.IO.Path.GetTempPath(), $"{Path.GetFileNameWithoutExtension(assetPath)}-{Guid.NewGuid().ToString()}.html");
-
+    static void WriteDotViewer(string dot, string outputPath, string? dotPath) {
         ProcessStartInfo info = new ProcessStartInfo(dotPath ?? "dot");
         info.RedirectStandardInput = true;
         info.RedirectStandardOutput = true;
         info.ArgumentList.Add("-Tsvg");
-        //info.ArgumentList.Add("-o");
-        //info.ArgumentList.Add(outputPath);
         var p = Process.Start(info) ?? throw new Exception("Process null");
 
         p.Start();
 
-        new SummaryGenerator(asset, StreamWriter.Null, p.StandardInput).Summarize();
+        p.StandardInput.Write(dot);
         p.StandardInput.Close();
 
         var svgData = p.StandardOutput.ReadToEnd();
@@ -257,6 +252,15 @@ Leading underscores can be used to work around special function names being ille
         using(StreamWriter writetext = new StreamWriter(outputPath)) {
             writetext.Write(html);
         }
+    }
+    static void Cfg(EngineVersion ueVersion, string? mappings, string assetPath, string? dotPath) {
+        UAsset asset = LoadAsset(ueVersion, mappings, assetPath);
+
+        var dot = new StringWriter();
+        new SummaryGenerator(asset, StreamWriter.Null, dot).Summarize();
+
+        string outputPath = Path.Join(System.IO.Path.GetTempPath(), $"{Path.GetFileNameWithoutExtension(assetPath)}-{Guid.NewGuid().ToString()}.html");
+        WriteDotViewer(dot.ToString(), outputPath, dotPath);
 
         OpenUrl(outputPath);
     }
