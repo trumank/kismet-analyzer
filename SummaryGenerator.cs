@@ -92,13 +92,15 @@ public class SummaryGenerator {
         Graph.EdgeAttributes["fontname"] = "monospace";
     }
 
-    public void Summarize() {
+    public bool Summarize() {
+        var anyExport = false;
         var minRank = new Subgraph();
         minRank.Attributes["rank"] = "min";
         Graph.Subgraphs.Add(minRank);
 
         var classExport = Asset.GetClassExport();
         if (classExport != null) {
+            anyExport = true;
             var classLines = new Lines($"ClassExport: {classExport.ObjectName}");
             classLines.Add(new Lines($"SuperStruct: {ToString(classExport.SuperStruct)}"));
             var propLines = new Lines("Properties:");
@@ -130,6 +132,7 @@ public class SummaryGenerator {
 
         foreach (var export in Asset.Exports) {
             if (export is FunctionExport e) {
+                anyExport = true;
                 Output.WriteLine("FunctionExport " + e.ObjectName);
 
                 string functionName = e.ObjectName.ToString();
@@ -220,7 +223,9 @@ public class SummaryGenerator {
                 }
             }
         }
+
         Graph.Write(DotOutput);
+        return anyExport;
     }
 
     public static string SanitizeLabel(string str) {

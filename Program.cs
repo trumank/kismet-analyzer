@@ -341,8 +341,9 @@ Leading underscores can be used to work around special function names being ille
             UAsset asset = LoadAsset(ueVersion, mappings, assetPath);
 
             var dot = new StringWriter();
-            new SummaryGenerator(asset, TextWriter.Null, dot).Summarize();
-            WriteDotViewer(dot.ToString(), outputPath, dotPath);
+            if (new SummaryGenerator(asset, TextWriter.Null, dot).Summarize()) {
+                WriteDotViewer(dot.ToString(), outputPath, dotPath);
+            }
         });
         if (progress is Progress p3) {
             Console.SetOut(p3.StdOut);
