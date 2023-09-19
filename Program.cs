@@ -310,9 +310,12 @@ Leading underscores can be used to work around special function names being ille
                 var fullClassName = $"{assetPackage}.{classExport.ObjectName}";
                 var fullParentName = $"{parent.OuterIndex.ToImport(asset).ObjectName}.{parent.ObjectName}";
 
+                string relativePath = Path.GetRelativePath(assetInputDir, Path.GetDirectoryName(assetPath));
+                string fileName = Path.ChangeExtension(Path.GetFileName(assetPath), ".html");
+
                 var classNode = new Node(fullClassName);
                 classNode.Attributes["label"] = classExport.ObjectName.ToString();
-                classNode.Attributes["URL"] = Path.Join("cfgs", Path.GetRelativePath(assetInputDir, Path.GetDirectoryName(assetPath)), Path.ChangeExtension(Path.GetFileName(assetPath), ".html"));
+                classNode.Attributes["URL"] = Path.Join("cfgs", relativePath, fileName).Replace('\\', '/');
                 graph.Nodes.Add(classNode);
 
                 var edge = new Edge(fullClassName, fullParentName);
