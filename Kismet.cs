@@ -809,6 +809,10 @@ public class Kismet {
                 {
                     return new EX_Nothing();
                 }
+            case EX_EndOfScript e:
+                {
+                    return new EX_EndOfScript();
+                }
             case EX_Let e:
                 {
                     return new EX_Let() {
