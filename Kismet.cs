@@ -343,6 +343,76 @@ public class Kismet {
                 }
         }
     }
+    public static FPackageIndex? CopyExportTo((UAsset, FPackageIndex?) export, UAsset dst) {
+        if (export.Item2 == null) return null;
+        if (export.Item2.IsNull()) return export.Item2;
+        // could potentially check if there is an existing matchin export but that's complex
+        // maybe can check by name?
+        var exp = export.Item2.ToExport(export.Item1);
+        switch (exp) {
+            case FunctionExport e:
+                {
+                    var src = export.Item1;
+
+                    var fnDst = new FunctionExport() {
+                        IsInheritedInstance = e.IsInheritedInstance,
+                        GeneratePublicHash = e.GeneratePublicHash,
+
+                        //StructExport
+                        SuperStruct = CopyImportTo((src, e.SuperStruct), dst),
+                        Children = new FPackageIndex[0],
+                        LoadedProperties = new FProperty[0], // TODO
+                        // ScriptBytecode = filled later
+
+                        //FieldExport
+                        Field = new UField(),
+
+                        //NormalExport
+                        Data = new List<PropertyData>(), // TODO?
+
+                        //Export
+                        ClassIndex = CopyImportTo((src, e.ClassIndex), dst),
+                        SuperIndex = CopyImportTo((src, e.SuperIndex), dst),
+                        TemplateIndex = CopyImportTo((src, e.TemplateIndex), dst),
+                        ObjectFlags = e.ObjectFlags,
+                        bForcedExport = e.bForcedExport,
+                        bNotForClient = e.bNotForClient,
+                        bNotForServer = e.bNotForServer,
+                        PackageGuid = e.PackageGuid,
+                        PackageFlags = e.PackageFlags,
+                        bNotAlwaysLoadedForEditorGame = e.bNotAlwaysLoadedForEditorGame,
+                        bIsAsset = e.bIsAsset,
+                        SerializationBeforeSerializationDependencies = new List<FPackageIndex>(),
+                        CreateBeforeSerializationDependencies = new List<FPackageIndex>(),
+                        SerializationBeforeCreateDependencies = new List<FPackageIndex>(),
+                        CreateBeforeCreateDependencies = new List<FPackageIndex>(),
+                        Asset = dst,
+
+                        //FObjectResource
+                        ObjectName = e.ObjectName.Transfer(dst),
+                        OuterIndex = FPackageIndex.FromExport(dst.Exports.IndexOf(dst.GetClassExport())),
+
+                        //Export
+                        Extras = e.Extras,
+                    };
+
+                    var fnPiDst = FPackageIndex.FromExport(dst.Exports.Count() - 1);
+                    dst.Exports.Add(fnDst);
+                    fnDst.ScriptBytecode = e.ScriptBytecode.Select(expression => CopyExpressionTo(expression, src, dst, e, fnDst)).ToArray();
+
+                    return fnPiDst;
+                }
+            default:
+                throw new NotImplementedException($"Export {exp} not implemented");
+        }
+        /*
+        if (imp.OuterIndex.IsNull()) {
+            return asset.AddImport(new Import(imp.ClassPackage.ToString(), imp.ClassName.ToString(), FPackageIndex.FromRawIndex(0), imp.ObjectName.ToString(), false, asset));
+        } else {
+            return asset.AddImport(new Import(imp.ClassPackage.ToString(), imp.ClassName.ToString(), CopyImportTo((import.Item1, imp.OuterIndex), asset), imp.ObjectName.ToString(), false, asset));
+        }
+        */
+    }
     public static FPackageIndex? CopyImportTo((UAsset, FPackageIndex?) import, UAsset asset) {
         if (import.Item2 == null) return null;
         if (import.Item2.IsNull()) return import.Item2;

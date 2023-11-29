@@ -33,6 +33,9 @@ public class Program {
         var assetDestination = new Argument<string>
             (name: "dest",
             description: "Destination asset");
+        var assetMerged = new Argument<string>
+            (name: "merged",
+            description: "Merged asset");
         var importIndexes = new Argument<IList<int>>
             (name: "import indexes",
             description: "Import indexes");
@@ -163,7 +166,8 @@ public class Program {
 Leading underscores can be used to work around special function names being illegal in the editor.");
         mergeFunctions.Add(assetSource);
         mergeFunctions.Add(assetDestination);
-        mergeFunctions.SetHandler(MergeFunctions, ueVersion, mappings, assetSource, assetDestination);
+        mergeFunctions.Add(assetMerged);
+        mergeFunctions.SetHandler(MergeFunctions, ueVersion, mappings, assetSource, assetDestination, assetMerged);
         rootCommand.AddCommand(mergeFunctions);
 
         var findSchematics = new Command("find-schematics", "Find all Deep Rock Galactic schematics");
@@ -396,7 +400,7 @@ Leading underscores can be used to work around special function names being ille
         Kismet.SpliceMissionTerminal(input);
         input.Write(assetOutput);
     }
-    static void MergeFunctions(EngineVersion ueVersion, string? mappings, string assetSource, string assetDestination) {
+    static void MergeFunctions(EngineVersion ueVersion, string? mappings, string assetSource, string assetDestination, string assetMerged) {
         UAsset source = LoadAsset(ueVersion, mappings, assetSource);
         UAsset dest = LoadAsset(ueVersion, mappings, assetDestination);
         foreach (var export in source.Exports) {
@@ -441,10 +445,12 @@ Leading underscores can be used to work around special function names being ille
                         break;
                     }
                 }
-                if (!found) Console.Error.WriteLine($"Could not find matching function for {fnSrc.ObjectName} in dest asset");
+                if (!found) {
+                    Kismet.CopyExportTo((source, FPackageIndex.FromExport(source.Exports.IndexOf(export))), dest);
+                }
             }
         }
-        dest.Write(assetDestination);
+        dest.Write(assetMerged);
     }
     static void GenBlueprint(EngineVersion ueVersion, string? mappings, string contextPath, string assetSource, string assetDestination) {
         var context = UEContext.FromFile(contextPath);
