@@ -350,6 +350,14 @@ public class SummaryGenerator {
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
+            case EX_LetDelegate e:
+                {
+                    lines = new Lines("EX_" + e.Inst);
+                    lines.Add(Stringify(e.VariableExpression, ref index, referencedAddresses));
+                    lines.Add(Stringify(e.AssignmentExpression, ref index, referencedAddresses));
+                    if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
+                    break;
+                }
             case EX_LetBool e:
                 {
                     lines = new Lines("EX_" + e.Inst);
