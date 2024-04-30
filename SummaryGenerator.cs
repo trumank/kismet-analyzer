@@ -10,6 +10,13 @@ using UAssetAPI.Kismet.Bytecode.Expressions;
 
 using Dot;
 
+using System.Collections.Generic;
+
+public static class IEnumerableExtensions {
+    public static IEnumerable<(T item, int index)> WithIndex<T>(this IEnumerable<T> self)
+       => self.Select((item, index) => (item, index));
+}
+
 public class SummaryGenerator {
     public class Lines {
         public string Label { get; }
@@ -92,6 +99,13 @@ public class SummaryGenerator {
         Graph.EdgeAttributes["fontname"] = "monospace";
     }
 
+    struct TmpInstruction {
+        public Node Node;
+        public IList<Edge> Edges;
+        //Instruction Instruction;
+        public IList<(string, uint)> References;
+    }
+
     public bool Summarize() {
         var anyExport = false;
         var minRank = new Subgraph();
@@ -130,12 +144,19 @@ public class SummaryGenerator {
             Output.WriteLine("No ClassExport");
         }
 
+        var reachable = new HashSet<(string, uint)>();
+        var instructions = new Dictionary<(string, uint), TmpInstruction>();
+
+        Predicate<string> filter = (name) => name == "GenerateLandscapeFromData" || name == "GetRandomRoom" || name == "ReceiveBeginPlay";
+
         foreach (var export in Asset.Exports) {
             if (export is FunctionExport e) {
                 anyExport = true;
                 Output.WriteLine("FunctionExport " + e.ObjectName);
 
                 string functionName = e.ObjectName.ToString();
+
+                var include = filter(functionName);
 
                 var functionLines = new Lines("Function " + functionName);
                 foreach (var prop in e.LoadedProperties) {
@@ -150,16 +171,20 @@ public class SummaryGenerator {
                     functionLines.Add(propLines);
                 }
 
-                var functionNode = new Node(functionName);
-                functionNode.Attributes["label"] = $"{{{LinesToField(functionLines)}}}";
-                functionNode.Attributes["shape"] = "record";
-                functionNode.Attributes["style"] = "filled";
-                functionNode.Attributes["fillcolor"] = "#ff8888";
-                Graph.Nodes.Add(functionNode);
-                minRank.Nodes.Add(new Node(functionName));
+                if (include) {
+                    var functionNode = new Node(functionName);
+                    functionNode.Attributes["label"] = $"{{{LinesToField(functionLines)}}}";
+                    functionNode.Attributes["shape"] = "record";
+                    functionNode.Attributes["style"] = "filled";
+                    functionNode.Attributes["fillcolor"] = "#ff8888";
+                    Graph.Nodes.Add(functionNode);
+                    minRank.Nodes.Add(new Node(functionName));
 
-                var functionEdge = new Edge(functionName, functionName + "__0");
-                Graph.Edges.Add(functionEdge);
+                    var functionEdge = new Edge(functionName, functionName + "__0");
+                    Graph.Edges.Add(functionEdge);
+
+                    reachable.Add((functionName, 0));
+                }
 
                 uint index = 0;
                 Console.WriteLine(functionName);
@@ -176,7 +201,7 @@ public class SummaryGenerator {
                     node.Attributes["style"] = "filled";
                     node.Attributes["fillcolor"] = "#eeeeee";
 
-                    foreach (var reference in intr.ReferencedAddresses) {
+                    var edges = intr.ReferencedAddresses.Select(reference => {
                         var edge = new Edge(
                                 $"{e.ObjectName.ToString()}__{intr.Address.ToString()}",
                                 $"{reference.FunctionName ?? e.ObjectName.ToString()}__{reference.Address.ToString()}"
@@ -217,10 +242,38 @@ public class SummaryGenerator {
                                     break;
                                 }
                         }
-                        Graph.Edges.Add(edge);
-                    }
-                    Graph.Nodes.Add(node);
+                        return edge;
+                    }).ToList();
+
+                    instructions.Add((functionName, intr.Address), new TmpInstruction() {
+                        Node = node,
+                        Edges = edges,
+                        References = intr.ReferencedAddresses.Select(reference => (reference.FunctionName ?? functionName, reference.Address)).ToList(),
+                    });
                 }
+            }
+        }
+
+        var visited = new HashSet<(string, uint)>(reachable);
+        var queue = new Stack<(string, uint)>(reachable);
+        while (queue.Count > 0) {
+            var next = queue.Pop();
+            visited.Add(next);
+
+            if (instructions.TryGetValue(next, out var inst)) {
+                foreach (var reference in inst.References) {
+                    if (!visited.Contains(reference)) {
+                        reachable.Add(reference);
+                        queue.Push(reference);
+                    }
+                }
+            }
+        }
+
+        foreach (var addr in reachable) {
+            if (instructions.TryGetValue(addr, out var inst)) {
+                Graph.Nodes.Add(inst.Node);
+                Graph.Edges.AddRange(inst.Edges);
             }
         }
 
