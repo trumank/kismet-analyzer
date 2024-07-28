@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 using UAssetAPI;
 using UAssetAPI.UnrealTypes;
 using UAssetAPI.ExportTypes;
-using UAssetAPI.FieldTypes;
+using UAssetAPI.CustomVersions;
 using UAssetAPI.Kismet.Bytecode;
 using UAssetAPI.Kismet.Bytecode.Expressions;
 
@@ -62,7 +62,7 @@ public class AbstractKismetBuilder {
     }
 
     public string FromKismetPropertyPointer(KismetPropertyPointer pointer) {
-        if (Asset.ObjectVersion >= KismetPropertyPointer.XFER_PROP_POINTER_SWITCH_TO_SERIALIZING_AS_FIELD_PATH_VERSION) {
+        if (Asset.GetCustomVersion<FReleaseObjectVersion>() >= FReleaseObjectVersion.FFieldPathOwnerSerialization) {
             return $"{FromPackageIndex(pointer.New.ResolvedOwner)}[{String.Join(",", pointer.New.Path.Select(p => p.ToString().Replace(",", "\\,")))}]";
         } else {
             return FromPackageIndex(pointer.Old);
@@ -361,7 +361,7 @@ public class KismetBuilder {
 
     static Regex RxKismetPropertyPointer = new Regex(@"^PackageIndex\((-?\d+)\)\[(.*)\]$", RegexOptions.Compiled);
     public KismetPropertyPointer ToKismetPropertyPointer(String pointer) {
-        if (Asset.ObjectVersion >= KismetPropertyPointer.XFER_PROP_POINTER_SWITCH_TO_SERIALIZING_AS_FIELD_PATH_VERSION) {
+        if (Asset.GetCustomVersion<FReleaseObjectVersion>() >= FReleaseObjectVersion.FFieldPathOwnerSerialization) {
             var match = RxKismetPropertyPointer.Match(pointer);
 
             var owner = FPackageIndex.FromRawIndex(Int32.Parse(match.Groups[1].Value));
