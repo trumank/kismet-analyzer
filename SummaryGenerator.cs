@@ -826,7 +826,7 @@ public class SummaryGenerator {
             case EX_UnicodeStringConst e:
                 {
                     lines = new Lines("EX_" + e.Inst + " " + e.Value);
-                    index += 1 + (uint) (e.Value.Length + 1) * 2;
+                    index += (uint) (e.Value.Length + 1) * 2;
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
