@@ -297,6 +297,9 @@ Leading underscores can be used to work around special function names being ille
             Console.SetOut(progress.Value.NullOut);
             Console.SetError(progress.Value.NullOut);
         }
+
+        var usmap = mappings != null ? new Usmap(mappings) : null;
+
         var i = 0;
         foreach (var assetPath in assets) {
             if (progress is Progress p2) {
@@ -304,7 +307,7 @@ Leading underscores can be used to work around special function names being ille
                 p2.Bar.Refresh(i++, $"Hierarchy... ({Path.GetFileName(assetPath)})");
                 Console.SetOut(p2.NullOut);
             }
-            var asset = LoadAsset(ueVersion, mappings, assetPath);
+            var asset = new UAsset(assetPath, ueVersion, usmap);
             var classExport = asset.GetClassExport();
             if (classExport != null) {
                 var parent = classExport.SuperStruct.ToImport(asset);
