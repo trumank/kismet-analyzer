@@ -345,7 +345,7 @@ Leading underscores can be used to work around special function names being ille
             var outputPath = Path.Join(outputDir, Path.ChangeExtension(Path.GetFileName(assetPath), ".html"));
             Directory.CreateDirectory(outputDir);
 
-            UAsset asset = LoadAsset(ueVersion, mappings, assetPath);
+            UAsset asset = new UAsset(assetPath, ueVersion, usmap);
 
             var dot = new StringWriter();
             if (new SummaryGenerator(asset, TextWriter.Null, dot).Summarize()) {
