@@ -884,6 +884,12 @@ public class SummaryGenerator {
                     if (top) referencedAddresses.Add(new Reference(index, ReferenceType.Normal));
                     break;
                 }
+            case EX_FieldPathConst e:
+                {
+                    lines = new Lines("EX_" + e.Inst + " " + e.Value);
+                    lines.Add(Stringify(e.Value, ref index, referencedAddresses));
+                    break;
+                }
             case EX_True:
             case EX_False:
             case EX_Nothing:
